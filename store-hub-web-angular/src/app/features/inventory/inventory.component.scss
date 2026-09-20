@@ -70,15 +70,11 @@
   padding: 0 0.65rem;
   border-radius: 9px;
   border: 1px solid var(--si-border);
-  background: #fff;
+  background: var(--si-surface);
   font-size: 0.8rem;
   font-weight: 650;
   color: var(--si-muted);
   cursor: pointer;
-}
-
-html[data-theme='dark'] .inv-check {
-  background: var(--si-surface);
 }
 
 .inv-state {
@@ -101,15 +97,17 @@ html[data-theme='dark'] .inv-check {
 
 .inv-card {
   --accent: var(--si-primary);
-  --accent-soft: color-mix(in srgb, var(--si-primary) 14%, #fff);
+  --mix-base: var(--si-surface-2);
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--mix-base));
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   padding: 0.95rem 1rem;
   border-radius: 16px;
-  background: #fff;
-  border: 1px solid color-mix(in srgb, var(--si-border) 80%, transparent);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--si-border) 55%, transparent);
+  background: var(--mix-base);
+  border: 1px solid var(--si-border);
+  box-shadow: var(--si-shadow-sm);
+  color: var(--si-text);
   animation: inv-card-in 0.45s ease both;
   animation-delay: var(--delay, 0ms);
   transition:
@@ -119,23 +117,29 @@ html[data-theme='dark'] .inv-check {
 }
 
 html[data-theme='dark'] .inv-card {
-  background: var(--si-surface);
-  --accent-soft: color-mix(in srgb, var(--accent) 22%, var(--si-surface));
+  --mix-base: #2a2321;
+  --accent-soft: color-mix(in srgb, var(--accent) 20%, #2a2321);
+  background: #2a2321;
 }
 
 .inv-card[data-accent='1'] {
   --accent: var(--brand-sage);
-  --accent-soft: color-mix(in srgb, var(--brand-sage) 18%, #fff);
 }
 
 .inv-card[data-accent='2'] {
   --accent: #3b82f6;
-  --accent-soft: color-mix(in srgb, #3b82f6 14%, #fff);
 }
 
 .inv-card[data-accent='3'] {
   --accent: #f59e0b;
-  --accent-soft: color-mix(in srgb, #f59e0b 16%, #fff);
+}
+
+html[data-theme='dark'] .inv-card[data-accent='2'] {
+  --accent: #60a5fa;
+}
+
+html[data-theme='dark'] .inv-card[data-accent='3'] {
+  --accent: #fbbf24;
 }
 
 .inv-card.is-low {
@@ -183,8 +187,12 @@ html[data-theme='dark'] .inv-card {
   font-weight: 800;
   padding: 0.2rem 0.45rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--brand-sage) 18%, #fff);
+  background: color-mix(in srgb, var(--brand-sage) 18%, var(--mix-base));
   color: color-mix(in srgb, var(--brand-sage) 40%, var(--brand-ink));
+}
+
+html[data-theme='dark'] .inv-card__badge {
+  color: color-mix(in srgb, var(--brand-sage) 55%, #fff);
 }
 
 .inv-card__badge.is-low {
@@ -218,11 +226,7 @@ html[data-theme='dark'] .inv-card {
   margin: 0.35rem 0 0.55rem;
   padding: 0.55rem 0.65rem;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--accent-soft) 55%, #fff);
-}
-
-html[data-theme='dark'] .inv-card__qty {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--mix-base));
 }
 
 .inv-card__qty-label {

@@ -1,8 +1,11 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using StoreHub.Application.Common;
+using StoreHub.Application.Features.Notifications.DTOs;
+using StoreHub.Application.Features.Notifications.Interfaces;
 using StoreHub.Application.Features.Stores.DTOs;
 using StoreHub.Application.Features.Stores.Interfaces;
+using StoreHub.Domain.Enums;
 using StoreHub.Domain.Stores;
 using StoreHub.Persistence;
 using StoreHub.Shared.Api;
@@ -16,17 +19,20 @@ public sealed class StoreService : IStoreService
 {
     private readonly StoreHubDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
     private readonly IValidator<CreateStoreRequest> _createValidator;
     private readonly IValidator<UpdateStoreRequest> _updateValidator;
 
     public StoreService(
         StoreHubDbContext db,
         ICurrentUserService currentUser,
+        INotificationService notifications,
         IValidator<CreateStoreRequest> createValidator,
         IValidator<UpdateStoreRequest> updateValidator)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
     }
@@ -287,6 +293,7 @@ public sealed class StoreService : IStoreService
 
         var existing = await _db.StoreMembers.Where(m => m.StoreId == id).ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        var previousIds = existing.Select(m => m.UserId).ToHashSet();
         _db.StoreMembers.RemoveRange(existing);
 
         foreach (var userId in userIds)
@@ -295,6 +302,30 @@ public sealed class StoreService : IStoreService
         }
 
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var store = await _db.Stores.AsNoTracking()
+            .Where(s => s.Id == id)
+            .Select(s => new { s.NameAr, s.NameEn })
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var storeLabel = store is null ? id.ToString() : $"{store.NameAr} / {store.NameEn}";
+
+        foreach (var userId in userIds.Where(uid => !previousIds.Contains(uid)))
+        {
+            await _notifications.NotifyUserSafeAsync(
+                userId,
+                new PublishNotificationRequest
+                {
+                    NotificationType = NotificationType.StoreMembership,
+                    Title = "إضافة إلى محل",
+                    Message =
+                        $"تم إضافتك كعضو في المحل «{storeLabel}».\n" +
+                        $"You were added as a member of «{storeLabel}».",
+                    RelatedEntityId = id,
+                    RelatedEntityType = nameof(Store)
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
 
         var members = await MapMembersAsync(id, cancellationToken).ConfigureAwait(false);
         return Result<IReadOnlyList<StoreMemberDto>>.Ok(members);

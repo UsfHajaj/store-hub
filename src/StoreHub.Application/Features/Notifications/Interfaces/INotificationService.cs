@@ -42,4 +42,18 @@ public interface INotificationService
         CancellationToken cancellationToken = default);
 
     Task PublishIntegrationAsync(CreateNotificationRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Best-effort in-app notification to one user. Never throws; failures are swallowed.
+    /// </summary>
+    Task NotifyUserSafeAsync(Guid userId, PublishNotificationRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Best-effort in-app notification to all active members of a store.
+    /// </summary>
+    Task NotifyStoreMembersSafeAsync(
+        Guid storeId,
+        PublishNotificationRequest request,
+        Guid? excludeUserId = null,
+        CancellationToken cancellationToken = default);
 }

@@ -29,6 +29,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'profile/change-password',
+    loadComponent: () =>
+      import('./features/profile/change-password-page.component').then((m) => m.ChangePasswordPageComponent),
+    canActivate: [authGuard],
+  },
+  {
     path: '',
     loadComponent: () => import('./layout/app-shell.component').then((m) => m.AppShellComponent),
     canActivate: [authGuard, storeContextGuard],
@@ -162,11 +168,6 @@ export const routes: Routes = [
       {
         path: 'profile',
         loadComponent: () => import('./features/profile/profile.component').then((m) => m.ProfileComponent),
-      },
-      {
-        path: 'profile/change-password',
-        loadComponent: () =>
-          import('./features/profile/change-password-page.component').then((m) => m.ChangePasswordPageComponent),
       },
     ],
   },

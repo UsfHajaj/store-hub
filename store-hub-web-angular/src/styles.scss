@@ -103,6 +103,7 @@
   --si-chart-8: color-mix(in srgb, var(--brand-sage) 40%, var(--brand-ink));
   --si-chart-9: color-mix(in srgb, var(--si-warning) 70%, var(--brand-coral));
   --si-chart-10: color-mix(in srgb, var(--si-success) 55%, var(--brand-ink));
+  --si-chart-line: var(--brand-coral);
 
   /* Shape */
   --si-radius-sm: 8px;
@@ -188,6 +189,19 @@ html[data-theme='dark'] {
 
   --si-code-bg: #14100f;
   --si-tooltip-bg: #0e0b0a;
+
+  /* Bright chart strokes for dark backgrounds (ink-based hues wash out) */
+  --si-chart-1: #ff7a5c;
+  --si-chart-2: #8fbfa8;
+  --si-chart-3: #e8d5b7;
+  --si-chart-4: #5cbc8e;
+  --si-chart-5: #e0b15a;
+  --si-chart-6: #7eb8b8;
+  --si-chart-7: #ff9a7a;
+  --si-chart-8: #a8a492;
+  --si-chart-9: #f0c070;
+  --si-chart-10: #6ed4a0;
+  --si-chart-line: #ff7a5c;
 }
 
 *,
@@ -328,7 +342,8 @@ html[data-theme='dark'] .page-intro {
 }
 
 html[data-theme='dark'] .si-panel {
-  background: var(--si-surface);
+  background: #2a2321;
+  border-color: var(--si-border);
   box-shadow: var(--si-shadow-sm);
 }
 

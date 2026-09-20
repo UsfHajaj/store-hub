@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NotificationsApiService } from '../../core/services/notifications-api.service';
+import { LocaleService } from '../../core/i18n/locale.service';
 import { SiTranslatePipe } from '../../shared/pipes/si-translate.pipe';
 import { PagedResult } from '../../shared/models/api.types';
 import { NotificationListItemDto } from '../../shared/models/notification.models';
@@ -14,6 +15,7 @@ import { NotificationListItemDto } from '../../shared/models/notification.models
 })
 export class NotificationsComponent {
   private readonly api = inject(NotificationsApiService);
+  private readonly locale = inject(LocaleService);
 
   readonly page = signal(1);
   readonly pageSize = signal(10);
@@ -61,5 +63,29 @@ export class NotificationsComponent {
 
   markAll(): void {
     this.api.markAllMyRead().subscribe(() => this.load());
+  }
+
+  typeLabel(type: number): string {
+    const key =
+      type === 10
+        ? 'notif.type.lowStock'
+        : type === 11
+          ? 'notif.type.saleReturn'
+          : type === 12
+            ? 'notif.type.stocktake'
+            : type === 13
+              ? 'notif.type.stockAdjusted'
+              : type === 14
+                ? 'notif.type.membership'
+                : type === 15
+                  ? 'notif.type.welcome'
+                  : 'notif.type.general';
+    return this.locale.t(key);
+  }
+
+  channelLabel(channel: number): string {
+    const key =
+      channel === 2 ? 'notif.channel.email' : channel === 3 ? 'notif.channel.both' : 'notif.channel.inApp';
+    return this.locale.t(key);
   }
 }

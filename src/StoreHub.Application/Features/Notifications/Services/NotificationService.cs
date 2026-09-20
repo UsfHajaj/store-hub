@@ -484,8 +484,78 @@ public sealed class NotificationService : INotificationService
     {
         try
         {
-            var result = await CreateAsync(request, cancellationToken).ConfigureAwait(false);
-            _ = result;
+            _ = await CreateAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Intentionally swallow: domain workflows must not fail on notification side effects.
+        }
+    }
+
+    public Task NotifyUserSafeAsync(
+        Guid userId,
+        PublishNotificationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (userId == Guid.Empty || string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Message))
+        {
+            return Task.CompletedTask;
+        }
+
+        return PublishIntegrationAsync(
+            new CreateNotificationRequest
+            {
+                UserId = userId,
+                NotificationType = request.NotificationType,
+                Title = request.Title,
+                Message = request.Message,
+                Channel = request.Channel,
+                RelatedEntityId = request.RelatedEntityId,
+                RelatedEntityType = request.RelatedEntityType
+            },
+            cancellationToken);
+    }
+
+    public async Task NotifyStoreMembersSafeAsync(
+        Guid storeId,
+        PublishNotificationRequest request,
+        Guid? excludeUserId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (storeId == Guid.Empty || string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Message))
+        {
+            return;
+        }
+
+        try
+        {
+            var query = _db.StoreMembers.AsNoTracking()
+                .Where(m => m.StoreId == storeId)
+                .Select(m => m.UserId);
+
+            if (excludeUserId is { } exclude && exclude != Guid.Empty)
+            {
+                query = query.Where(id => id != exclude);
+            }
+
+            var userIds = await query.Distinct().ToListAsync(cancellationToken).ConfigureAwait(false);
+            if (userIds.Count == 0)
+            {
+                return;
+            }
+
+            _ = await CreateBatchAsync(
+                new CreateNotificationBatchRequest
+                {
+                    UserIds = userIds,
+                    NotificationType = request.NotificationType,
+                    Title = request.Title,
+                    Message = request.Message,
+                    Channel = request.Channel,
+                    RelatedEntityId = request.RelatedEntityId,
+                    RelatedEntityType = request.RelatedEntityType
+                },
+                cancellationToken).ConfigureAwait(false);
         }
         catch
         {
@@ -593,8 +663,40 @@ public sealed class NotificationService : INotificationService
             "STORE_HUB_GENERAL",
             "إدارة المحلات — إشعار عام",
             "إشعار",
-            "مرحباً بك في نظام إدارة المحلات. يمكنك توسيع القوالب من هنا.",
+            "مرحباً بك في نظام إدارة المحلات.",
             NotificationType.General,
+            NotificationChannel.InApp
+        ),
+        (
+            "STORE_HUB_LOW_STOCK",
+            "تنبيه مخزون منخفض",
+            "مخزون منخفض",
+            "وصل منتج إلى حد إعادة الطلب. راجع صفحة المخزون.",
+            NotificationType.LowStock,
+            NotificationChannel.InApp
+        ),
+        (
+            "STORE_HUB_SALE_RETURN",
+            "مرتجع بيع",
+            "مرتجع",
+            "تم تسجيل مرتجع على فاتورة بيع.",
+            NotificationType.SaleReturn,
+            NotificationChannel.InApp
+        ),
+        (
+            "STORE_HUB_STOCKTAKE",
+            "اكتمال الجرد",
+            "جرد مكتمل",
+            "تم إكمال جرد وتحديث كميات المخزون.",
+            NotificationType.StocktakeCompleted,
+            NotificationChannel.InApp
+        ),
+        (
+            "STORE_HUB_WELCOME",
+            "ترحيب بمستخدم جديد",
+            "مرحباً",
+            "تم إنشاء حسابك في نظام إدارة المحلات.",
+            NotificationType.Welcome,
             NotificationChannel.InApp
         )
     ];

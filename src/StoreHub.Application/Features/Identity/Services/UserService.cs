@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using StoreHub.Application.Common;
 using StoreHub.Application.Features.Identity.DTOs;
 using StoreHub.Application.Features.Identity.Interfaces;
+using StoreHub.Application.Features.Notifications.DTOs;
+using StoreHub.Application.Features.Notifications.Interfaces;
+using StoreHub.Domain.Enums;
 using StoreHub.Domain.Identity;
 using StoreHub.Persistence;
 using StoreHub.Shared.Api;
@@ -15,6 +18,7 @@ public sealed class UserService : IUserService
 {
     private readonly StoreHubDbContext _db;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly INotificationService _notifications;
     private readonly IValidator<CreateUserRequest> _createValidator;
     private readonly IValidator<UpdateUserRequest> _updateValidator;
     private readonly IValidator<UserFilterRequest> _filterValidator;
@@ -22,12 +26,14 @@ public sealed class UserService : IUserService
     public UserService(
         StoreHubDbContext db,
         IPasswordHasher passwordHasher,
+        INotificationService notifications,
         IValidator<CreateUserRequest> createValidator,
         IValidator<UpdateUserRequest> updateValidator,
         IValidator<UserFilterRequest> filterValidator)
     {
         _db = db;
         _passwordHasher = passwordHasher;
+        _notifications = notifications;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _filterValidator = filterValidator;
@@ -87,6 +93,20 @@ public sealed class UserService : IUserService
         {
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
+
+        await _notifications.NotifyUserSafeAsync(
+            user.Id,
+            new PublishNotificationRequest
+            {
+                NotificationType = NotificationType.Welcome,
+                Title = "مرحباً بك",
+                Message =
+                    "تم إنشاء حسابك في نظام إدارة المحلات. يمكنك تسجيل الدخول ومتابعة عملك من لوحة التحكم.\n" +
+                    "Your Store Hub account is ready. Sign in and start from the dashboard.",
+                RelatedEntityId = user.Id,
+                RelatedEntityType = nameof(User)
+            },
+            cancellationToken).ConfigureAwait(false);
 
         return Result<UserDto>.Ok(await MapUserDtoAsync(user.Id, cancellationToken).ConfigureAwait(false));
     }

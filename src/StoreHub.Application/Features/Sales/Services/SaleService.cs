@@ -1,6 +1,9 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using StoreHub.Application.Common;
+using StoreHub.Application.Features.Inventory.Services;
+using StoreHub.Application.Features.Notifications.DTOs;
+using StoreHub.Application.Features.Notifications.Interfaces;
 using StoreHub.Application.Features.Sales.DTOs;
 using StoreHub.Application.Features.Sales.Interfaces;
 using StoreHub.Domain.Catalog;
@@ -18,17 +21,20 @@ public sealed class SaleService : ISaleService
 {
     private readonly StoreHubDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
     private readonly IValidator<CreateSaleRequest> _createValidator;
     private readonly IValidator<CreateSaleReturnRequest> _returnValidator;
 
     public SaleService(
         StoreHubDbContext db,
         ICurrentUserService currentUser,
+        INotificationService notifications,
         IValidator<CreateSaleRequest> createValidator,
         IValidator<CreateSaleReturnRequest> returnValidator)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
         _createValidator = createValidator;
         _returnValidator = returnValidator;
     }
@@ -105,7 +111,7 @@ public sealed class SaleService : ISaleService
 
             decimal subtotal = 0;
             decimal discountTotal = 0;
-            var stockDeltas = new List<(Product Product, decimal Qty)>();
+            var stockDeltas = new List<(Product Product, decimal Qty, decimal QtyBefore)>();
 
             foreach (var item in grouped)
             {
@@ -146,7 +152,7 @@ public sealed class SaleService : ISaleService
                 discountTotal += lineDisc;
                 if (product.TracksInventory)
                 {
-                    stockDeltas.Add((product, item.Quantity));
+                    stockDeltas.Add((product, item.Quantity, product.StockQuantity));
                 }
             }
 
@@ -157,7 +163,8 @@ public sealed class SaleService : ISaleService
             _db.Sales.Add(sale);
             await _db.SaveChangesAsync(ct).ConfigureAwait(false);
 
-            foreach (var (product, qty) in stockDeltas)
+            var lowStockAlerts = new List<(Guid ProductId, string NameAr, string NameEn, decimal Qty, decimal Reorder)>();
+            foreach (var (product, qty, qtyBefore) in stockDeltas)
             {
                 product.StockQuantity -= qty;
                 _db.StockMovements.Add(new StockMovement
@@ -171,10 +178,33 @@ public sealed class SaleService : ISaleService
                     ReferenceId = sale.Id,
                     Notes = $"Invoice #{nextInvoice}"
                 });
+
+                var reorder = product.ReorderLevel ?? InventoryService.DefaultReorderLevel;
+                if (qtyBefore > reorder && product.StockQuantity <= reorder)
+                {
+                    lowStockAlerts.Add((product.Id, product.NameAr, product.NameEn, product.StockQuantity, reorder));
+                }
             }
 
             await _db.SaveChangesAsync(ct).ConfigureAwait(false);
             await tx.CommitAsync(ct).ConfigureAwait(false);
+
+            foreach (var alert in lowStockAlerts)
+            {
+                await _notifications.NotifyStoreMembersSafeAsync(
+                    storeId,
+                    new PublishNotificationRequest
+                    {
+                        NotificationType = NotificationType.LowStock,
+                        Title = "تنبيه مخزون منخفض",
+                        Message =
+                            $"المنتج «{alert.NameAr}» وصل لحد إعادة الطلب. الكمية الحالية: {alert.Qty:0.##} (الحد: {alert.Reorder:0.##}).\n" +
+                            $"Low stock: «{alert.NameEn}» is at {alert.Qty:0.##} (reorder: {alert.Reorder:0.##}).",
+                        RelatedEntityId = alert.ProductId,
+                        RelatedEntityType = nameof(Product)
+                    },
+                    cancellationToken: ct).ConfigureAwait(false);
+            }
 
             var dto = await MapSaleDtoAsync(storeId, sale.Id, ct).ConfigureAwait(false);
             if (dto is null)
@@ -422,6 +452,30 @@ public sealed class SaleService : ISaleService
 
             await _db.SaveChangesAsync(ct).ConfigureAwait(false);
             await tx.CommitAsync(ct).ConfigureAwait(false);
+
+            var storeName = await _db.Stores.AsNoTracking()
+                .Where(s => s.Id == storeId)
+                .Select(s => new { s.NameAr, s.NameEn })
+                .FirstOrDefaultAsync(ct)
+                .ConfigureAwait(false);
+            var storeLabel = storeName is null
+                ? storeId.ToString()
+                : $"{storeName.NameAr} / {storeName.NameEn}";
+
+            await _notifications.NotifyStoreMembersSafeAsync(
+                storeId,
+                new PublishNotificationRequest
+                {
+                    NotificationType = NotificationType.SaleReturn,
+                    Title = "مرتجع بيع",
+                    Message =
+                        $"تم تسجيل مرتجع #{saleReturn.ReturnNumber} على فاتورة #{sale.InvoiceNumber} بمبلغ {saleReturn.GrandTotal:0.##} — {storeLabel}.\n" +
+                        $"Sale return #{saleReturn.ReturnNumber} on invoice #{sale.InvoiceNumber} for {saleReturn.GrandTotal:0.##}.",
+                    RelatedEntityId = saleReturn.Id,
+                    RelatedEntityType = nameof(SaleReturn)
+                },
+                excludeUserId: _currentUser.UserId,
+                cancellationToken: ct).ConfigureAwait(false);
 
             return Result<SaleReturnDto>.Ok(new SaleReturnDto
             {

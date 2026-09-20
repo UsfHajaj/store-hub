@@ -96,6 +96,7 @@ export class SiChartComponent implements AfterViewInit, OnDestroy {
   private chart: Chart | null = null;
   private ready = false;
   private lastSig = '';
+  private themeObserver: MutationObserver | null = null;
 
   constructor() {
     effect(() => {
@@ -115,9 +116,21 @@ export class SiChartComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.ready = true;
     this.render();
+    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+      this.themeObserver = new MutationObserver(() => {
+        this.lastSig = '';
+        this.render();
+      });
+      this.themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme'],
+      });
+    }
   }
 
   ngOnDestroy(): void {
+    this.themeObserver?.disconnect();
+    this.themeObserver = null;
     this.chart?.destroy();
     this.chart = null;
   }
@@ -158,21 +171,28 @@ export class SiChartComponent implements AfterViewInit, OnDestroy {
       Array.from({ length: count }, (_, i) => palette[i % palette.length]);
 
     const datasets = datasetsInput.map((d, i) => {
-      // Bars/arcs: full brand mix. Lines: skip pale coral-first so fill isn't milky peach.
-      const colorIndex = this.type() === 'line' ? (i + 2) % palette.length : i % palette.length;
-      const base = palette[colorIndex];
+      // Lines use vivid stroke first (coral / --si-chart-line) so they stay visible in dark mode.
+      const colorIndex = this.type() === 'line' ? i % palette.length : i % palette.length;
+      const base =
+        this.type() === 'line' && i === 0
+          ? this.cssVar('--si-chart-line', palette[0])
+          : palette[colorIndex];
       const perPoint = this.type() === 'bar' || this.isArc();
       const colors = perPoint ? pointColors(d.data.length) : base;
       const softFill =
-        this.type() === 'line' ? this.withAlpha(String(base), 0.14) : colors;
+        this.type() === 'line' ? this.withAlpha(String(base), 0.18) : colors;
 
       return {
         ...d,
         backgroundColor: d.backgroundColor ?? softFill,
         borderColor:
           d.borderColor ??
-          (this.isArc() ? '#fff' : perPoint ? pointColors(d.data.length) : base),
-        borderWidth: d.borderWidth ?? (this.isArc() ? 2 : this.type() === 'line' ? 2.5 : 0),
+          (this.isArc()
+            ? this.cssVar('--si-surface', '#fff')
+            : perPoint
+              ? pointColors(d.data.length)
+              : base),
+        borderWidth: d.borderWidth ?? (this.isArc() ? 2 : this.type() === 'line' ? 3 : 0),
         fill: d.fill ?? this.type() === 'line',
         tension: d.tension ?? 0.35,
         hoverBackgroundColor: perPoint

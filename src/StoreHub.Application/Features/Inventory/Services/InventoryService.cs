@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using StoreHub.Application.Common;
 using StoreHub.Application.Features.Inventory.DTOs;
 using StoreHub.Application.Features.Inventory.Interfaces;
+using StoreHub.Application.Features.Notifications.DTOs;
+using StoreHub.Application.Features.Notifications.Interfaces;
+using StoreHub.Domain.Catalog;
 using StoreHub.Domain.Enums;
 using StoreHub.Domain.Inventory;
 using StoreHub.Persistence;
@@ -19,15 +22,18 @@ public sealed class InventoryService : IInventoryService
 
     private readonly StoreHubDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
     private readonly IValidator<AdjustStockRequest> _adjustValidator;
 
     public InventoryService(
         StoreHubDbContext db,
         ICurrentUserService currentUser,
+        INotificationService notifications,
         IValidator<AdjustStockRequest> adjustValidator)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
         _adjustValidator = adjustValidator;
     }
 
@@ -132,7 +138,8 @@ public sealed class InventoryService : IInventoryService
                 InventoryErrors.InvalidAdjustment);
         }
 
-        var next = product.StockQuantity + request.QuantityChange;
+        var qtyBefore = product.StockQuantity;
+        var next = qtyBefore + request.QuantityChange;
         if (next < 0)
         {
             return Result<InventoryItemDto>.Fail("Stock cannot go below zero.", InventoryErrors.InvalidAdjustment);
@@ -153,6 +160,23 @@ public sealed class InventoryService : IInventoryService
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var reorder = product.ReorderLevel ?? DefaultReorderLevel;
+        if (qtyBefore > reorder && next <= reorder)
+        {
+            await _notifications.NotifyStoreMembersSafeAsync(
+                storeId,
+                new PublishNotificationRequest
+                {
+                    NotificationType = NotificationType.LowStock,
+                    Title = "تنبيه مخزون منخفض",
+                    Message =
+                        $"المنتج «{product.NameAr}» وصل لحد إعادة الطلب بعد تعديل المخزون. الكمية: {next:0.##} (الحد: {reorder:0.##}).\n" +
+                        $"Low stock after adjustment: «{product.NameEn}» is at {next:0.##} (reorder: {reorder:0.##}).",
+                    RelatedEntityId = product.Id,
+                    RelatedEntityType = nameof(Product)
+                },
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+
         return Result<InventoryItemDto>.Ok(new InventoryItemDto
         {
             ProductId = product.Id,
@@ -173,11 +197,16 @@ public sealed class StocktakeService : IStocktakeService
 {
     private readonly StoreHubDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
-    public StocktakeService(StoreHubDbContext db, ICurrentUserService currentUser)
+    public StocktakeService(
+        StoreHubDbContext db,
+        ICurrentUserService currentUser,
+        INotificationService notifications)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     public async Task<Result<PagedResult<StocktakeListItemDto>>> GetPagedAsync(
@@ -422,6 +451,9 @@ public sealed class StocktakeService : IStocktakeService
                 .ToDictionaryAsync(p => p.Id, ct)
                 .ConfigureAwait(false);
 
+            var adjustedCount = 0;
+            var lowStockAlerts = new List<(Guid ProductId, string NameAr, string NameEn, decimal Qty, decimal Reorder)>();
+
             foreach (var line in stocktake.Lines)
             {
                 if (line.CountedQuantity is null)
@@ -440,7 +472,9 @@ public sealed class StocktakeService : IStocktakeService
                     continue;
                 }
 
+                var qtyBefore = product.StockQuantity;
                 product.StockQuantity = line.CountedQuantity.Value;
+                adjustedCount++;
                 _db.StockMovements.Add(new StockMovement
                 {
                     StoreId = storeId,
@@ -452,6 +486,12 @@ public sealed class StocktakeService : IStocktakeService
                     ReferenceId = stocktake.Id,
                     Notes = "Stocktake adjustment"
                 });
+
+                var reorder = product.ReorderLevel ?? InventoryService.DefaultReorderLevel;
+                if (qtyBefore > reorder && product.StockQuantity <= reorder)
+                {
+                    lowStockAlerts.Add((product.Id, product.NameAr, product.NameEn, product.StockQuantity, reorder));
+                }
             }
 
             stocktake.Status = StocktakeStatus.Completed;
@@ -459,6 +499,38 @@ public sealed class StocktakeService : IStocktakeService
 
             await _db.SaveChangesAsync(ct).ConfigureAwait(false);
             await tx.CommitAsync(ct).ConfigureAwait(false);
+
+            await _notifications.NotifyStoreMembersSafeAsync(
+                storeId,
+                new PublishNotificationRequest
+                {
+                    NotificationType = NotificationType.StocktakeCompleted,
+                    Title = "اكتمال الجرد",
+                    Message =
+                        $"تم إكمال الجرد وتحديث {adjustedCount} صنف.\n" +
+                        $"Stocktake completed — {adjustedCount} item(s) adjusted.",
+                    RelatedEntityId = stocktake.Id,
+                    RelatedEntityType = nameof(Stocktake)
+                },
+                excludeUserId: _currentUser.UserId,
+                cancellationToken: ct).ConfigureAwait(false);
+
+            foreach (var alert in lowStockAlerts)
+            {
+                await _notifications.NotifyStoreMembersSafeAsync(
+                    storeId,
+                    new PublishNotificationRequest
+                    {
+                        NotificationType = NotificationType.LowStock,
+                        Title = "تنبيه مخزون منخفض",
+                        Message =
+                            $"بعد الجرد: «{alert.NameAr}» عند {alert.Qty:0.##} (حد الطلب: {alert.Reorder:0.##}).\n" +
+                            $"After stocktake: «{alert.NameEn}» is at {alert.Qty:0.##} (reorder: {alert.Reorder:0.##}).",
+                        RelatedEntityId = alert.ProductId,
+                        RelatedEntityType = nameof(Product)
+                    },
+                    cancellationToken: ct).ConfigureAwait(false);
+            }
 
             return Result<StocktakeDto>.Ok((await MapAsync(storeId, stocktakeId, ct).ConfigureAwait(false))!);
         }, cancellationToken).ConfigureAwait(false);

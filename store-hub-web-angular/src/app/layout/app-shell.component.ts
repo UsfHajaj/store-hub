@@ -1,7 +1,8 @@
 import { DatePipe } from '@angular/common';
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { catchError, filter, interval, of, startWith, switchMap } from 'rxjs';
 import { AuthService } from '../core/auth/auth.service';
 import { LocaleService } from '../core/i18n/locale.service';
 import { ThemeService } from '../core/theme/theme.service';
@@ -47,6 +48,7 @@ export class AppShellComponent {
   readonly activeStore = inject(ActiveStoreService);
   private readonly router = inject(Router);
   private readonly notificationsApi = inject(NotificationsApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly PermissionCodes = PermissionCodes;
   readonly catalogViewPermissions = [
@@ -96,7 +98,16 @@ export class AppShellComponent {
 
   constructor() {
     this.syncPageTitle(this.router.url);
-    this.refreshUnread();
+
+    interval(45_000)
+      .pipe(
+        startWith(0),
+        switchMap(() =>
+          this.notificationsApi.getMyUnreadCount().pipe(catchError(() => of(0))),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((n) => this.unreadCount.set(n));
 
     this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd)).subscribe((e) => {
       this.syncPageTitle(e.urlAfterRedirects);

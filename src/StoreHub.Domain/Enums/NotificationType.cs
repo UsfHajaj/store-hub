@@ -10,5 +10,17 @@ public enum NotificationType : byte
 
     ApprovalRejected = 4,
 
+    LowStock = 10,
+
+    SaleReturn = 11,
+
+    StocktakeCompleted = 12,
+
+    StockAdjusted = 13,
+
+    StoreMembership = 14,
+
+    Welcome = 15,
+
     General = 99
 }

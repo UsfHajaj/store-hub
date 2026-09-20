@@ -28,8 +28,8 @@
             <h2 class="pcard__title">{{ n.title }}</h2>
             <p class="pcard__text">{{ n.message }}</p>
             <div class="pcard__meta">
-              <span class="pcard__chip">{{ n.notificationType }}</span>
-              <span class="pcard__chip pcard__chip--alt">{{ n.channel }}</span>
+              <span class="pcard__chip">{{ typeLabel(n.notificationType) }}</span>
+              <span class="pcard__chip pcard__chip--alt">{{ channelLabel(n.channel) }}</span>
             </div>
             @if (!n.isRead) {
               <button type="button" class="pcard__cta pcard__cta--solid" (click)="markOne(n.id)">
