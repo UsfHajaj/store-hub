@@ -1,0 +1,152 @@
+<p class="page-intro">{{ 'profile.subtitle' | siTranslate }}</p>
+
+@if (loading()) {
+  <p class="profile-state">{{ 'common.loading' | siTranslate }}</p>
+} @else {
+  <div class="profile-layout">
+    <section class="si-panel profile-card">
+      <div class="profile-card__hero">
+        <span class="profile-card__avatar" aria-hidden="true">{{ initials() }}</span>
+        <div class="profile-card__id">
+          <h2 class="profile-card__name">{{ displayName() }}</h2>
+          <span class="profile-card__email">{{ email() }}</span>
+          @if (roleLabels().length) {
+            <div class="profile-roles">
+              @for (role of roleLabels(); track role) {
+                <span class="profile-role">{{ role }}</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <dl class="profile-facts">
+        <div class="profile-fact">
+          <dt>{{ 'profile.username' | siTranslate }}</dt>
+          <dd>{{ userName() }}</dd>
+        </div>
+        <div class="profile-fact">
+          <dt>{{ 'profile.email' | siTranslate }}</dt>
+          <dd>{{ email() }}</dd>
+        </div>
+        @if (storeLabel()) {
+          <div class="profile-fact">
+            <dt>{{ 'profile.store' | siTranslate }}</dt>
+            <dd>{{ storeLabel() }}</dd>
+          </div>
+        }
+        <div class="profile-fact">
+          <dt>{{ 'profile.status' | siTranslate }}</dt>
+          <dd>{{ statusLabel() }}</dd>
+        </div>
+        <div class="profile-fact">
+          <dt>{{ 'profile.lastLogin' | siTranslate }}</dt>
+          <dd>{{ lastLogin() }}</dd>
+        </div>
+      </dl>
+
+      <a routerLink="/profile/change-password" class="profile-action">
+        {{ 'changePassword.heading' | siTranslate }}
+      </a>
+    </section>
+
+    <div class="profile-side">
+      <section class="si-panel profile-perf">
+        <div class="profile-perf__head">
+          <h3>{{ 'profile.myPerformance' | siTranslate }}</h3>
+          @if (storeLabel()) {
+            <span class="profile-perf__store">{{ storeLabel() }}</span>
+          }
+        </div>
+
+        @if (perfLoading()) {
+          <p class="profile-state profile-state--inline">{{ 'common.loading' | siTranslate }}</p>
+        } @else {
+          @if (performance(); as p) {
+            <div class="profile-kpis">
+              <article class="profile-kpi profile-kpi--accent">
+                <span>{{ 'profile.todaySales' | siTranslate }}</span>
+                <strong>{{ p.todaySales | currency: 'EGP' : 'LE' : '1.0-2' }}</strong>
+                <em>{{ 'profile.invoicesCount' | siTranslate: { n: p.todayInvoices } }}</em>
+              </article>
+              <article class="profile-kpi">
+                <span>{{ 'profile.avgTicket' | siTranslate }}</span>
+                <strong>{{ p.todayAverageTicket | currency: 'EGP' : 'LE' : '1.0-2' }}</strong>
+              </article>
+              <article class="profile-kpi">
+                <span>{{ 'profile.weekSales' | siTranslate }}</span>
+                <strong>{{ p.weekSales | currency: 'EGP' : 'LE' : '1.0-2' }}</strong>
+                <em>{{ 'profile.invoicesCount' | siTranslate: { n: p.weekInvoices } }}</em>
+              </article>
+              <article class="profile-kpi">
+                <span>{{ 'profile.monthSales' | siTranslate }}</span>
+                <strong>{{ p.monthSales | currency: 'EGP' : 'LE' : '1.0-2' }}</strong>
+                <em>{{ 'profile.invoicesCount' | siTranslate: { n: p.monthInvoices } }}</em>
+              </article>
+              @if (p.todayReturnCount > 0) {
+                <article class="profile-kpi profile-kpi--warn">
+                  <span>{{ 'profile.todayReturns' | siTranslate }}</span>
+                  <strong>{{ p.todayReturns | currency: 'EGP' : 'LE' : '1.0-2' }}</strong>
+                  <em>{{ 'profile.returnsCount' | siTranslate: { n: p.todayReturnCount } }}</em>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="profile-state profile-state--inline">{{ 'profile.noStorePerf' | siTranslate }}</p>
+          }
+        }
+      </section>
+
+      <section class="si-panel profile-time">
+        <div class="profile-clock">
+          <span class="profile-clock__label">{{ 'profile.localTime' | siTranslate }}</span>
+          <span class="profile-clock__time">{{ clock() }}</span>
+          <span class="profile-clock__date">{{ fullDate() }}</span>
+        </div>
+
+        <div class="profile-cal">
+          <div class="profile-cal__head">
+            <button
+              type="button"
+              class="profile-cal__nav"
+              (click)="prevMonth()"
+              [attr.aria-label]="'profile.prevMonth' | siTranslate"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            <button type="button" class="profile-cal__title" (click)="goToday()" [attr.aria-label]="'profile.today' | siTranslate">
+              {{ monthLabel() }}
+            </button>
+            <button
+              type="button"
+              class="profile-cal__nav"
+              (click)="nextMonth()"
+              [attr.aria-label]="'profile.nextMonth' | siTranslate"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="profile-cal__grid">
+            @for (w of weekdays(); track $index) {
+              <span class="profile-cal__weekday">{{ w }}</span>
+            }
+            @for (cell of calendar(); track $index) {
+              <span
+                class="profile-cal__day"
+                [class.is-muted]="!cell.inMonth"
+                [class.is-today]="cell.isToday"
+              >
+                {{ cell.day }}
+              </span>
+            }
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+}

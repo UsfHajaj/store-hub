@@ -1,0 +1,27 @@
+# Visual Studio / VS Code
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Build / publish
+**/bin/
+**/obj/
+**/PublishProfiles/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Node / Angular
+**/node_modules/
+**/dist/
+**/.angular/cache/
+
+# OS / temp
+Thumbs.db
+Desktop.ini
+*.log
+*.tmp

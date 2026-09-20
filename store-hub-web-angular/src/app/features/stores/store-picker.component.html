@@ -1,0 +1,22 @@
+<div class="picker">
+  <div class="picker__card">
+    <h1 class="picker__title">{{ 'stores.pickerTitle' | siTranslate }}</h1>
+    <p class="picker__desc">{{ 'stores.pickerDesc' | siTranslate }}</p>
+
+    @if (activeStore.loading()) {
+      <p class="picker__state">{{ 'common.loading' | siTranslate }}</p>
+    } @else if (activeStore.stores().length === 0) {
+      <p class="picker__state">{{ 'stores.pickerEmpty' | siTranslate }}</p>
+    } @else {
+      <div class="picker__grid">
+        @for (s of activeStore.stores(); track s.id; let i = $index) {
+          <button type="button" class="picker__item" [attr.data-accent]="i % 3" (click)="pick(s)">
+            <span class="picker__avatar" aria-hidden="true">{{ storeName(s).slice(0, 1) }}</span>
+            <span class="picker__name">{{ storeName(s) }}</span>
+            <span class="picker__arrow" aria-hidden="true">›</span>
+          </button>
+        }
+      </div>
+    }
+  </div>
+</div>

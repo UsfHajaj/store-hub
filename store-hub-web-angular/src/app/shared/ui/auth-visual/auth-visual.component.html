@@ -1,0 +1,59 @@
+<aside class="auth-visual" aria-hidden="true">
+  <div class="auth-visual__stage">
+    <div class="scene">
+      <!-- Soft horizon glow -->
+      <div class="scene__glow"></div>
+      <div class="scene__floor"></div>
+
+      <!-- Quiet street of shops -->
+      <div class="street">
+        <div class="facade facade--a">
+          <span class="facade__roof"></span>
+          <span class="facade__glass"></span>
+          <span class="facade__entry"></span>
+        </div>
+        <div class="facade facade--b">
+          <span class="facade__roof facade__roof--soft"></span>
+          <span class="facade__glass facade__glass--tall"></span>
+          <span class="facade__cup">
+            <span class="facade__steam"></span>
+            <span class="facade__steam facade__steam--b"></span>
+          </span>
+        </div>
+        <div class="facade facade--c">
+          <span class="facade__roof"></span>
+          <span class="facade__glass"></span>
+          <span class="facade__entry"></span>
+        </div>
+      </div>
+
+      <!-- Counter + register — the heart of the idea -->
+      <div class="counter">
+        <div class="register">
+          <span class="register__screen"></span>
+          <span class="register__body"></span>
+          <span class="register__key register__key--1"></span>
+          <span class="register__key register__key--2"></span>
+          <span class="register__key register__key--3"></span>
+        </div>
+        <div class="slip">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-visual__copy">
+    <p class="auth-visual__kicker">{{ 'login.heroKicker' | siTranslate }}</p>
+    @if (tone() === 'login') {
+      <h2 class="auth-visual__title">{{ 'login.heroTitle' | siTranslate }}</h2>
+      <p class="auth-visual__text">{{ 'login.heroText' | siTranslate }}</p>
+    } @else if (tone() === 'register') {
+      <h2 class="auth-visual__title">{{ 'register.heroTitle' | siTranslate }}</h2>
+      <p class="auth-visual__text">{{ 'register.heroText' | siTranslate }}</p>
+    } @else {
+      <h2 class="auth-visual__title">{{ 'changePassword.heroTitle' | siTranslate }}</h2>
+      <p class="auth-visual__text">{{ 'changePassword.heroText' | siTranslate }}</p>
+    }
+  </div>
+</aside>

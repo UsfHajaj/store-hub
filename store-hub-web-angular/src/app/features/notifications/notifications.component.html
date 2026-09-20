@@ -1,0 +1,54 @@
+<p class="page-intro">{{ 'notif.desc' | siTranslate }}</p>
+
+<section class="si-panel si-panel--soft">
+  <div class="toolbar">
+    <label class="si-check">
+      <input type="checkbox" [(ngModel)]="unreadOnly" name="unreadOnly" (change)="apply()" />
+      <span>{{ 'notif.unreadOnly' | siTranslate }}</span>
+    </label>
+    <button type="button" class="si-btn si-btn--ghost" (click)="markAll()">{{ 'notif.markAll' | siTranslate }}</button>
+  </div>
+
+  @if (result(); as p) {
+    <div class="pcard-grid pcard-grid--wide">
+      @for (n of p.items; track n.id; let i = $index) {
+        <article class="pcard" [class.pcard--unread]="!n.isRead" [attr.data-accent]="i % 3">
+          <span class="pcard__ribbon" aria-hidden="true"></span>
+          <div class="pcard__media pcard__media--sm">
+            <span class="pcard__deco" aria-hidden="true"></span>
+            <span class="pcard__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </span>
+          </div>
+          <div class="pcard__body">
+            <span class="pcard__eyebrow">{{ n.createdOnUtc | date: 'medium' }}</span>
+            <h2 class="pcard__title">{{ n.title }}</h2>
+            <p class="pcard__text">{{ n.message }}</p>
+            <div class="pcard__meta">
+              <span class="pcard__chip">{{ n.notificationType }}</span>
+              <span class="pcard__chip pcard__chip--alt">{{ n.channel }}</span>
+            </div>
+            @if (!n.isRead) {
+              <button type="button" class="pcard__cta pcard__cta--solid" (click)="markOne(n.id)">
+                {{ 'notif.markOne' | siTranslate }}
+              </button>
+            }
+          </div>
+        </article>
+      }
+    </div>
+
+    <div class="pager">
+      <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!p.hasPreviousPage">
+        {{ 'notif.pagerPrev' | siTranslate }}
+      </button>
+      <span class="pager__meta">{{ 'notif.pagerMeta' | siTranslate: { page: p.page, totalPages: p.totalPages } }}</span>
+      <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!p.hasNextPage">
+        {{ 'notif.pagerNext' | siTranslate }}
+      </button>
+    </div>
+  }
+</section>

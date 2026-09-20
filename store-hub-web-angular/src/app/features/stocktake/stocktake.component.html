@@ -1,0 +1,157 @@
+<div class="stk-page">
+  <header class="stk-toolbar">
+    <div>
+      <h1 class="stk-toolbar__title">{{ 'stocktake.heading' | siTranslate }}</h1>
+      <p class="stk-toolbar__desc">{{ 'stocktake.desc' | siTranslate }}</p>
+    </div>
+    <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="create()">
+      {{ 'stocktake.create' | siTranslate }}
+    </button>
+  </header>
+
+  <section class="stk-panel">
+    @if (loading()) {
+      <p class="stk-state">{{ 'common.loading' | siTranslate }}</p>
+    }
+
+    @if (!loading() && result(); as p) {
+      @if (p.items.length === 0) {
+        <div class="stk-empty">
+          <p>{{ 'stocktake.empty' | siTranslate }}</p>
+          <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="create()">
+            {{ 'stocktake.create' | siTranslate }}
+          </button>
+        </div>
+      } @else {
+        <div class="stk-grid">
+          @for (s of p.items; track s.id; let i = $index) {
+            <button
+              type="button"
+              class="stk-card"
+              [attr.data-status]="s.status"
+              [attr.data-accent]="i % 3"
+              [style.--delay]="(i % 12) * 40 + 'ms'"
+              (click)="open(s.id)"
+            >
+              <div class="stk-card__top">
+                <span class="stk-card__icon" aria-hidden="true">
+                  @if (s.status === 1) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                      <rect x="9" y="3" width="6" height="4" rx="1" />
+                      <path d="M9 12h6M9 16h4" />
+                    </svg>
+                  } @else if (s.status === 2) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="m9 9 6 6M15 9l-6 6" />
+                    </svg>
+                  }
+                </span>
+                <span class="stk-card__status" [attr.data-status]="s.status">{{ statusLabel(s.status) }}</span>
+              </div>
+
+              <h2 class="stk-card__title">{{ s.createdOnUtc | date: 'mediumDate' }}</h2>
+              <p class="stk-card__time">{{ s.createdOnUtc | date: 'shortTime' }}</p>
+
+              <div class="stk-card__meta">
+                <span class="stk-chip">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M4 7h16M4 12h16M4 17h10" />
+                  </svg>
+                  {{ s.lineCount }} {{ 'stocktake.lines' | siTranslate }}
+                </span>
+                <span class="stk-chip">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <circle cx="12" cy="8" r="3.5" />
+                    <path d="M5 19a7 7 0 0 1 14 0" />
+                  </svg>
+                  {{ s.startedByName }}
+                </span>
+              </div>
+
+              <span class="stk-card__cta">{{ 'stocktake.open' | siTranslate }} →</span>
+            </button>
+          }
+        </div>
+
+        <div class="pager">
+          <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!p.hasPreviousPage">
+            {{ 'common.pagerPrev' | siTranslate }}
+          </button>
+          <span class="pager__meta">{{
+            'common.pagerMeta' | siTranslate: { page: p.page, totalPages: p.totalPages, totalCount: p.totalCount }
+          }}</span>
+          <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!p.hasNextPage">
+            {{ 'common.pagerNext' | siTranslate }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+</div>
+
+@if (detail(); as d) {
+  <div class="stk-modal" role="dialog" aria-modal="true" (click)="close()">
+    <div class="stk-modal__panel" (click)="$event.stopPropagation()">
+      <header class="stk-modal__head">
+        <div>
+          <h2 class="stk-modal__title">{{ 'stocktake.detail' | siTranslate }}</h2>
+          <p class="stk-modal__sub">
+            <span class="stk-card__status" [attr.data-status]="d.status">{{ statusLabel(d.status) }}</span>
+            <span>{{ d.startedByName }}</span>
+            <span>{{ d.createdOnUtc | date: 'short' }}</span>
+          </p>
+        </div>
+        <button type="button" class="stk-modal__close" (click)="close()" [attr.aria-label]="'common.close' | siTranslate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </header>
+
+      <div class="stk-modal__body">
+        <div class="stk-lines">
+          @for (l of d.lines; track l.id; let i = $index) {
+            <div class="stk-line" [style.--delay]="(i % 16) * 25 + 'ms'">
+              <div class="stk-line__info">
+                <strong>{{ lineName(l) }}</strong>
+                <span>{{ 'stocktake.system' | siTranslate }}: {{ l.systemQuantity }}</span>
+              </div>
+              @if (d.status === 1) {
+                <label class="stk-line__count">
+                  <span>{{ 'stocktake.count' | siTranslate }}</span>
+                  <input
+                    type="number"
+                    [ngModel]="counts()[l.productId]"
+                    (ngModelChange)="setCount(l.productId, $event)"
+                    [name]="'c-' + l.productId"
+                  />
+                </label>
+              } @else {
+                <div class="stk-line__result" [class.is-diff]="l.difference !== 0">
+                  <span>{{ l.countedQuantity }}</span>
+                  <em>Δ {{ l.difference > 0 ? '+' : '' }}{{ l.difference }}</em>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (d.status === 1) {
+        <footer class="stk-modal__foot">
+          <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="saveLines()">
+            {{ 'stocktake.save' | siTranslate }}
+          </button>
+          <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="complete()">
+            {{ 'stocktake.complete' | siTranslate }}
+          </button>
+        </footer>
+      }
+    </div>
+  </div>
+}

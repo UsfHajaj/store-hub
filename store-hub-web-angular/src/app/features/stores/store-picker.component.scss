@@ -1,0 +1,104 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.picker {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: var(--si-bg);
+  background-image: var(--si-gradient-mesh);
+}
+
+.picker__card {
+  width: min(520px, 100%);
+  padding: 1.75rem 1.5rem;
+  border-radius: 24px;
+  background: var(--si-surface);
+  border: 1px solid var(--si-border);
+  box-shadow: var(--si-shadow-lg);
+}
+
+.picker__title {
+  margin: 0 0 0.4rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--si-text);
+}
+
+.picker__desc {
+  margin: 0 0 1.25rem;
+  color: var(--si-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.picker__state {
+  margin: 0;
+  color: var(--si-muted);
+}
+
+.picker__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.picker__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--si-border);
+  background: var(--si-surface-muted);
+  color: var(--si-text);
+  font: inherit;
+  cursor: pointer;
+  text-align: start;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.picker__item:hover {
+  transform: translateY(-1px);
+  border-color: var(--si-border-strong);
+  background: var(--si-surface-elevated);
+}
+
+.picker__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 800;
+  background: var(--brand-coral);
+}
+
+.picker__item[data-accent='1'] .picker__avatar {
+  background: color-mix(in srgb, var(--brand-sage) 55%, var(--brand-ink));
+}
+
+.picker__item[data-accent='2'] .picker__avatar {
+  background: var(--brand-ink);
+}
+
+.picker__name {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.picker__arrow {
+  font-size: 1.35rem;
+  color: var(--si-muted-2);
+}
+
+html[dir='rtl'] .picker__arrow {
+  transform: scaleX(-1);
+}

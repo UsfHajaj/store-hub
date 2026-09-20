@@ -1,0 +1,139 @@
+<p class="page-intro">{{ 'audit.desc' | siTranslate }}</p>
+
+<section class="si-panel si-panel--soft">
+  <div class="panel-toolbar">
+    <div class="panel-toolbar__main filters">
+      <label class="si-field si-field--compact">
+        <span class="si-field__label">{{ 'audit.filterSearch' | siTranslate }}</span>
+        <input class="si-input" [(ngModel)]="search" name="search" [placeholder]="'audit.filterSearchPh' | siTranslate" />
+      </label>
+      <label class="si-field si-field--compact">
+        <span class="si-field__label">{{ 'audit.filterEntity' | siTranslate }}</span>
+        <input class="si-input" [(ngModel)]="entityType" name="entityType" />
+      </label>
+      <label class="si-field si-field--compact">
+        <span class="si-field__label">{{ 'audit.filterAction' | siTranslate }}</span>
+        <input class="si-input" [(ngModel)]="action" name="action" />
+      </label>
+      <label class="si-field si-field--compact">
+        <span class="si-field__label">{{ 'audit.filterUser' | siTranslate }}</span>
+        <input class="si-input" [(ngModel)]="performedByUserId" name="performedByUserId" [placeholder]="'audit.filterUserPh' | siTranslate" />
+      </label>
+      <label class="si-field si-field--compact">
+        <span class="si-field__label">{{ 'audit.filterFrom' | siTranslate }}</span>
+        <input class="si-input" type="datetime-local" [(ngModel)]="fromLocal" name="fromLocal" />
+      </label>
+      <label class="si-field si-field--compact">
+        <span class="si-field__label">{{ 'audit.filterTo' | siTranslate }}</span>
+        <input class="si-input" type="datetime-local" [(ngModel)]="toLocal" name="toLocal" />
+      </label>
+      <button type="button" class="si-btn si-btn--primary" (click)="applyFilters()">{{ 'audit.apply' | siTranslate }}</button>
+    </div>
+
+    <div class="view-toggle" role="group" [attr.aria-label]="'common.viewTable' | siTranslate">
+      <button type="button" class="view-toggle__btn" [class.is-active]="viewMode() === 'card'" (click)="setView('card')">
+        {{ 'common.viewCards' | siTranslate }}
+      </button>
+      <button type="button" class="view-toggle__btn" [class.is-active]="viewMode() === 'table'" (click)="setView('table')">
+        {{ 'common.viewTable' | siTranslate }}
+      </button>
+    </div>
+  </div>
+
+  @if (result(); as p) {
+    @if (viewMode() === 'table') {
+      <div class="table-wrap">
+        <table class="si-table">
+          <thead>
+            <tr>
+              <th>{{ 'audit.colTime' | siTranslate }}</th>
+              <th>{{ 'audit.colAction' | siTranslate }}</th>
+              <th>{{ 'audit.colTarget' | siTranslate }}</th>
+              <th>{{ 'audit.colBy' | siTranslate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of p.items; track row.id) {
+              <tr (click)="openRow(row)" class="is-clickable">
+                <td>{{ row.occurredOnUtc | date: 'medium' }}</td>
+                <td>
+                  <span class="si-pill" [class.si-pill--http]="isHttpRow(row)">{{ actionLabel(row) }}</span>
+                </td>
+                <td>{{ targetLabel(row) }}</td>
+                <td>{{ performerLabel(row) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="pcard-grid">
+        @for (row of p.items; track row.id; let i = $index) {
+          <article class="pcard pcard--click" [attr.data-accent]="i % 3" (click)="openRow(row)">
+            <span class="pcard__ribbon" aria-hidden="true"></span>
+            <div class="pcard__media pcard__media--sm">
+              <span class="pcard__deco" aria-hidden="true"></span>
+              <span class="pcard__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+              </span>
+            </div>
+            <div class="pcard__body">
+              <span class="pcard__eyebrow">{{ row.occurredOnUtc | date: 'medium' }}</span>
+              <h2 class="pcard__title">{{ actionLabel(row) }}</h2>
+              <p class="pcard__text">{{ targetLabel(row) }}</p>
+              <div class="pcard__meta">
+                <span class="pcard__chip">{{ performerLabel(row) }}</span>
+                @if (isHttpRow(row)) {
+                  <span class="pcard__chip pcard__chip--alt">HTTP</span>
+                }
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    }
+
+    <div class="pager">
+      <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!p.hasPreviousPage">
+        {{ 'audit.pagerPrev' | siTranslate }}
+      </button>
+      <span class="pager__meta">{{
+        'audit.pagerMeta' | siTranslate: { page: p.page, totalPages: p.totalPages, totalCount: p.totalCount }
+      }}</span>
+      <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!p.hasNextPage">
+        {{ 'audit.pagerNext' | siTranslate }}
+      </button>
+    </div>
+  }
+</section>
+
+@if (selected(); as row) {
+  <div class="drawer-backdrop" (click)="closeDetail()"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="audit-drawer-title">
+    <div class="drawer__head">
+      <h2 id="audit-drawer-title">{{ 'audit.drawerTitle' | siTranslate }}</h2>
+      <button type="button" class="si-btn si-btn--ghost" (click)="closeDetail()">{{ 'audit.drawerClose' | siTranslate }}</button>
+    </div>
+    @if (detailLoading()) {
+      <p class="drawer__loading">{{ 'common.loading' | siTranslate }}</p>
+    } @else {
+      <dl class="drawer__dl">
+        <dt>{{ 'audit.dtAction' | siTranslate }}</dt>
+        <dd><span class="si-pill" [class.si-pill--http]="isHttpRow(row)">{{ actionLabel(row) }}</span></dd>
+        <dt>{{ 'audit.dtTarget' | siTranslate }}</dt>
+        <dd>{{ targetLabel(row) }}</dd>
+        <dt>{{ 'audit.dtUser' | siTranslate }}</dt>
+        <dd>{{ performerLabel(row) }}</dd>
+        <dt>{{ 'audit.dtTime' | siTranslate }}</dt>
+        <dd>{{ row.occurredOnUtc | date: 'full' }}</dd>
+        <dt>{{ 'audit.dtJson' | siTranslate }}</dt>
+        <dd>
+          <pre class="json-block">{{ row.detailsJson ?? dash() }}</pre>
+        </dd>
+      </dl>
+    }
+  </aside>
+}

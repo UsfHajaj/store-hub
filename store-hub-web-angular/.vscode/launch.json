@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET StoreHub API",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-api",
+      "program": "${workspaceFolder}/../src/StoreHub.Api/bin/Debug/net9.0/StoreHub.Api.dll",
+      "cwd": "${workspaceFolder}/../src/StoreHub.Api",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Angular (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "preLaunchTask": "npm: start",
+      "url": "http://localhost:4200/"
+    },
+    {
+      "name": "ng test",
+      "type": "chrome",
+      "request": "launch",
+      "preLaunchTask": "npm: test",
+      "url": "http://localhost:9876/debug.html"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full stack: API + Angular",
+      "configurations": [".NET StoreHub API", "Angular (Chrome)"],
+      "stopAll": true
+    }
+  ]
+}

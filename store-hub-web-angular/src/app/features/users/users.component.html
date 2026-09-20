@@ -1,0 +1,249 @@
+<div class="users-page">
+  <header class="users-toolbar">
+    <p class="users-toolbar__desc">{{ 'users.desc' | siTranslate }}</p>
+    <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+      {{ 'users.create' | siTranslate }}
+    </button>
+  </header>
+
+  <section class="si-panel si-panel--soft">
+    <div class="panel-toolbar">
+      <div class="panel-toolbar__main toolbar">
+        <label class="si-field si-field--grow">
+          <span class="si-field__label">{{ 'users.search' | siTranslate }}</span>
+          <input class="si-input" [(ngModel)]="search" name="search" (keyup.enter)="apply()" />
+        </label>
+        <button type="button" class="si-btn si-btn--primary" (click)="apply()">{{ 'users.searchBtn' | siTranslate }}</button>
+      </div>
+
+      <div class="view-toggle" role="group" [attr.aria-label]="'common.viewTable' | siTranslate">
+        <button type="button" class="view-toggle__btn" [class.is-active]="viewMode() === 'card'" (click)="setView('card')">
+          {{ 'common.viewCards' | siTranslate }}
+        </button>
+        <button type="button" class="view-toggle__btn" [class.is-active]="viewMode() === 'table'" (click)="setView('table')">
+          {{ 'common.viewTable' | siTranslate }}
+        </button>
+      </div>
+    </div>
+
+    @if (result(); as p) {
+      @if (viewMode() === 'card') {
+        <div class="users-grid">
+          @for (row of p.items; track row.id; let i = $index) {
+            <article class="user-card" [attr.data-accent]="i % 3">
+              <div class="user-card__top">
+                <div class="user-card__identity">
+                  <span class="user-card__avatar" aria-hidden="true">{{ initials(row) }}</span>
+                  <div class="user-card__titles">
+                    <h2 class="user-card__name">{{ displayName(row) }}</h2>
+                    <p class="user-card__email">{{ row.email }}</p>
+                  </div>
+                </div>
+                <span class="user-card__status" [class.user-card__status--off]="!row.isActive">{{
+                  row.isActive ? ('users.statusActive' | siTranslate) : ('users.statusInactive' | siTranslate)
+                }}</span>
+              </div>
+
+              <div class="user-card__meta">
+                <span class="user-card__chip">{{ row.userName }}</span>
+                <span class="user-card__login">{{
+                  row.lastLoginUtc ? (row.lastLoginUtc | date: 'medium') : dash()
+                }}</span>
+              </div>
+
+              <div class="user-card__actions">
+                <button type="button" class="si-btn si-btn--primary si-btn--sm" (click)="openEdit(row)">
+                  {{ 'users.edit' | siTranslate }}
+                </button>
+                <button type="button" class="si-btn si-btn--ghost si-btn--sm" (click)="toggleActive(row)">
+                  {{ row.isActive ? ('users.deactivate' | siTranslate) : ('users.activate' | siTranslate) }}
+                </button>
+                <button
+                  type="button"
+                  class="si-btn si-btn--ghost si-btn--sm user-card__delete"
+                  (click)="remove(row, $event)"
+                >
+                  {{ 'users.delete' | siTranslate }}
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table class="si-table">
+            <thead>
+              <tr>
+                <th>{{ 'users.colUsername' | siTranslate }}</th>
+                <th>{{ 'users.colEmail' | siTranslate }}</th>
+                <th>{{ 'users.colNameAr' | siTranslate }}</th>
+                <th>{{ 'users.colNameEn' | siTranslate }}</th>
+                <th>{{ 'users.colStatus' | siTranslate }}</th>
+                <th>{{ 'users.colLastLogin' | siTranslate }}</th>
+                <th>{{ 'users.colActions' | siTranslate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of p.items; track row.id) {
+                <tr>
+                  <td>{{ row.userName }}</td>
+                  <td>{{ row.email }}</td>
+                  <td>{{ row.nameAr ?? dash() }}</td>
+                  <td>{{ row.nameEn ?? dash() }}</td>
+                  <td>
+                    <span class="status" [class.status--off]="!row.isActive">{{
+                      row.isActive ? ('users.statusActive' | siTranslate) : ('users.statusInactive' | siTranslate)
+                    }}</span>
+                  </td>
+                  <td>{{ row.lastLoginUtc ? (row.lastLoginUtc | date: 'medium') : dash() }}</td>
+                  <td>
+                    <div class="users-table-actions">
+                      <button type="button" class="si-btn si-btn--primary si-btn--sm" (click)="openEdit(row)">
+                        {{ 'users.edit' | siTranslate }}
+                      </button>
+                      <button type="button" class="si-btn si-btn--ghost si-btn--sm" (click)="toggleActive(row)">
+                        {{ row.isActive ? ('users.deactivate' | siTranslate) : ('users.activate' | siTranslate) }}
+                      </button>
+                      <button
+                        type="button"
+                        class="si-btn si-btn--ghost si-btn--sm user-card__delete"
+                        (click)="remove(row, $event)"
+                      >
+                        {{ 'users.delete' | siTranslate }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <div class="pager">
+        <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!p.hasPreviousPage">
+          {{ 'users.pagerPrev' | siTranslate }}
+        </button>
+        <span class="pager__meta">{{
+          'users.pagerMeta' | siTranslate: { page: p.page, totalPages: p.totalPages, totalCount: p.totalCount }
+        }}</span>
+        <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!p.hasNextPage">
+          {{ 'users.pagerNext' | siTranslate }}
+        </button>
+      </div>
+    }
+  </section>
+</div>
+
+@if (modalOpen()) {
+  <div class="user-modal" role="dialog" aria-modal="true" (click)="closeModal()">
+    <div class="user-modal__panel" (click)="$event.stopPropagation()">
+      <header class="user-modal__head">
+        <h2 class="user-modal__title">
+          {{ (modalMode() === 'create' ? 'users.createTitle' : 'users.editTitle') | siTranslate }}
+        </h2>
+        <button type="button" class="user-modal__close" (click)="closeModal()" [attr.aria-label]="'common.close' | siTranslate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </header>
+
+      @if (modalLoading()) {
+        <p class="users-state">{{ 'common.loading' | siTranslate }}</p>
+      } @else {
+        <div class="user-modal__body">
+          <div class="users-form">
+            <label class="si-field">
+              <span class="si-field__label">{{ 'users.colUsername' | siTranslate }}</span>
+              <input class="si-input" [(ngModel)]="userName" name="userName" />
+            </label>
+            <label class="si-field">
+              <span class="si-field__label">{{ 'users.colEmail' | siTranslate }}</span>
+              <input class="si-input" type="email" [(ngModel)]="email" name="email" />
+            </label>
+            <label class="si-field">
+              <span class="si-field__label">{{ 'users.colNameAr' | siTranslate }}</span>
+              <input class="si-input" [(ngModel)]="nameAr" name="nameAr" />
+            </label>
+            <label class="si-field">
+              <span class="si-field__label">{{ 'users.colNameEn' | siTranslate }}</span>
+              <input class="si-input" [(ngModel)]="nameEn" name="nameEn" />
+            </label>
+            <div class="si-field si-field--full">
+              <span class="si-field__label">{{
+                (modalMode() === 'create' ? 'users.password' : 'users.newPassword') | siTranslate
+              }}</span>
+              <div class="si-pw">
+                <input
+                  class="si-input"
+                  [type]="showPassword() ? 'text' : 'password'"
+                  [(ngModel)]="password"
+                  name="password"
+                  autocomplete="new-password"
+                />
+                <app-password-toggle-btn [visible]="showPassword()" (toggled)="togglePasswordVisibility()" />
+              </div>
+            </div>
+          </div>
+
+          <h3 class="users-roles__title">{{ 'users.roles' | siTranslate }}</h3>
+          <p class="users-roles__hint">{{ 'users.rolesHint' | siTranslate }}</p>
+          <ul class="users-roles">
+            @for (role of roles(); track role.id) {
+              <li>
+                <label class="users-role-row">
+                  <input type="checkbox" [checked]="isRoleChecked(role.id)" (change)="toggleRole(role.id)" />
+                  <span>
+                    <strong>{{ roleLabel(role) }}</strong>
+                    <small>{{ role.nameEn }}</small>
+                  </span>
+                </label>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <footer class="user-modal__foot">
+          <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeModal()">
+            {{ 'common.cancel' | siTranslate }}
+          </button>
+          <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="save()">
+            {{ (saving() ? 'users.saving' : 'users.save') | siTranslate }}
+          </button>
+        </footer>
+      }
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="users-delete-title" (click)="closeDeleteConfirm()">
+    <div class="confirm-modal__panel" (click)="$event.stopPropagation()">
+      <div class="confirm-modal__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M19 6l-1 14H6L5 6" />
+          <path d="M10 11v6M14 11v6" />
+        </svg>
+      </div>
+      <h2 id="users-delete-title" class="confirm-modal__title">{{ 'users.confirmDeleteTitle' | siTranslate }}</h2>
+      <p class="confirm-modal__question">{{ 'users.confirmDelete' | siTranslate }}</p>
+      <div class="confirm-modal__user">
+        <span class="confirm-modal__avatar">{{ initials(target) }}</span>
+        <div>
+          <strong>{{ displayName(target) }}</strong>
+          <small>{{ target.email }}</small>
+        </div>
+      </div>
+      <p class="confirm-modal__hint">{{ 'users.confirmDeleteHint' | siTranslate }}</p>
+      <div class="confirm-modal__actions">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeDeleteConfirm()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="confirm-modal__danger" [disabled]="saving()" (click)="confirmDelete()">
+          {{ (saving() ? 'users.saving' : 'users.confirmDeleteBtn') | siTranslate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

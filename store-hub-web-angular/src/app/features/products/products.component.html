@@ -1,0 +1,293 @@
+<div class="prod-page">
+  <header class="prod-toolbar">
+    <div>
+      <h1 class="prod-toolbar__title">{{ 'products.heading' | siTranslate }}</h1>
+      <p class="prod-toolbar__desc">{{ 'products.desc' | siTranslate }}</p>
+    </div>
+    @if (canCreate()) {
+      <button type="button" class="si-btn si-btn--primary" (click)="openCreate()" [disabled]="categories().length === 0">
+        {{ 'products.create' | siTranslate }}
+      </button>
+    }
+  </header>
+
+  <div class="prod-layout">
+    <aside class="prod-cats" aria-label="categories">
+      <p class="prod-cats__label">{{ 'products.filterCategory' | siTranslate }}</p>
+      <button
+        type="button"
+        class="prod-cats__item"
+        [class.is-active]="!filterCategoryId"
+        (click)="setCategoryFilter('')"
+      >
+        {{ 'products.allCategories' | siTranslate }}
+      </button>
+      @for (c of categoryNav(); track c.id) {
+        <button
+          type="button"
+          class="prod-cats__item"
+          [class.is-child]="c.isChild"
+          [class.is-active]="filterCategoryId === c.id"
+          (click)="setCategoryFilter(c.id)"
+        >
+          <span class="prod-cats__name">{{ c.label }}</span>
+          @if (c.productCount > 0) {
+            <span class="prod-cats__count">{{ c.productCount }}</span>
+          }
+        </button>
+      }
+    </aside>
+
+    <section class="prod-panel">
+      <div class="prod-filters">
+        <label class="prod-filters__search">
+          <span class="prod-filters__label">{{ 'products.search' | siTranslate }}</span>
+          <input
+            class="si-input"
+            [(ngModel)]="search"
+            name="search"
+            (keyup.enter)="apply()"
+            [placeholder]="'products.searchPh' | siTranslate"
+          />
+        </label>
+        <button type="button" class="si-btn si-btn--ghost" (click)="apply()">
+          {{ 'common.searchBtn' | siTranslate }}
+        </button>
+      </div>
+
+      @if (loading()) {
+        <p class="prod-state">{{ 'common.loading' | siTranslate }}</p>
+      }
+
+      @if (!loading() && result(); as p) {
+        @if (p.items.length === 0) {
+          <div class="prod-empty">
+            <p>{{ 'products.empty' | siTranslate }}</p>
+            @if (canCreate() && categories().length > 0) {
+              <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+                {{ 'products.create' | siTranslate }}
+              </button>
+            }
+          </div>
+        } @else {
+          <div class="prod-grid">
+            @for (row of p.items; track row.id; let i = $index) {
+              <article class="prod-card" [attr.data-accent]="i % 3" [class.is-off]="!row.isActive">
+                <div class="prod-card__media">
+                  @if (resolveImage(row.imageUrl); as src) {
+                    <img [src]="src" [alt]="productName(row)" loading="lazy" />
+                  } @else {
+                    <div class="prod-card__ph" aria-hidden="true">
+                      <span>{{ productName(row).slice(0, 1) }}</span>
+                    </div>
+                  }
+                  <span class="prod-card__badge" [class.is-off]="!row.isActive">
+                    {{ (row.isActive ? 'products.active' : 'products.inactive') | siTranslate }}
+                  </span>
+                </div>
+                <div class="prod-card__body">
+                  <h2 class="prod-card__name">{{ productName(row) }}</h2>
+                  <p class="prod-card__cat">{{ locale.lang() === 'ar' ? row.categoryNameAr : row.categoryNameEn }}</p>
+                  <div class="prod-card__meta">
+                    <span class="prod-card__price">{{ row.price | currency: 'EGP' : 'LE' : '1.0-2' }}</span>
+                    @if (row.tracksInventory !== false) {
+                      <span class="prod-chip">{{ 'products.stockChip' | siTranslate: { qty: row.stockQuantity } }}</span>
+                    } @else {
+                      <span class="prod-chip prod-chip--muted">{{ 'products.noStockChip' | siTranslate }}</span>
+                    }
+                    @if (row.barcode) {
+                      <span class="prod-card__code">{{ row.barcode }}</span>
+                    }
+                  </div>
+                  @if (canDiscount() || canUpdate()) {
+                    <div class="prod-card__actions">
+                      @if (canDiscount()) {
+                        <button type="button" class="si-btn si-btn--ghost si-btn--sm" (click)="openProductDiscount(row)">
+                          {{ 'products.addDiscount' | siTranslate }}
+                        </button>
+                      }
+                      @if (canUpdate()) {
+                        <button type="button" class="si-btn si-btn--primary si-btn--sm" (click)="openEdit(row)">
+                          {{ 'products.edit' | siTranslate }}
+                        </button>
+                        <button type="button" class="si-btn si-btn--ghost si-btn--sm prod-card__del" (click)="remove(row, $event)">
+                          {{ 'products.delete' | siTranslate }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </article>
+            }
+          </div>
+
+          <div class="pager">
+            <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!p.hasPreviousPage">
+              {{ 'common.pagerPrev' | siTranslate }}
+            </button>
+            <span class="pager__meta">{{
+              'common.pagerMeta' | siTranslate: { page: p.page, totalPages: p.totalPages, totalCount: p.totalCount }
+            }}</span>
+            <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!p.hasNextPage">
+              {{ 'common.pagerNext' | siTranslate }}
+            </button>
+          </div>
+        }
+      }
+    </section>
+  </div>
+</div>
+
+@if (modalOpen()) {
+  <div class="prod-modal" role="dialog" aria-modal="true" (click)="closeModal()">
+    <div class="prod-modal__panel" (click)="$event.stopPropagation()">
+      <header class="prod-modal__head">
+        <h2 class="prod-modal__title">
+          {{ (modalMode() === 'create' ? 'products.createTitle' : 'products.editTitle') | siTranslate }}
+        </h2>
+        <button type="button" class="prod-modal__close" (click)="closeModal()" [attr.aria-label]="'common.close' | siTranslate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <div class="prod-modal__body">
+        <div class="prod-form">
+          <label class="si-field">
+            <span class="si-field__label">{{ 'products.nameAr' | siTranslate }}</span>
+            <input class="si-input" [(ngModel)]="nameAr" name="nameAr" />
+          </label>
+          <label class="si-field">
+            <span class="si-field__label">{{ 'products.nameEn' | siTranslate }}</span>
+            <input class="si-input" [(ngModel)]="nameEn" name="nameEn" />
+          </label>
+          <label class="si-field si-field--full">
+            <span class="si-field__label">{{ 'products.category' | siTranslate }}</span>
+            <select class="si-input" [(ngModel)]="categoryId" name="categoryId">
+              @for (c of categoryNav(); track c.id) {
+                <option [value]="c.id">{{ c.selectLabel }}</option>
+              }
+            </select>
+          </label>
+          <label class="si-field">
+            <span class="si-field__label">{{ 'products.barcode' | siTranslate }}</span>
+            <input class="si-input" type="text" inputmode="numeric" [(ngModel)]="barcode" name="barcode" autocomplete="off" />
+          </label>
+          <label class="si-field">
+            <span class="si-field__label">{{ 'products.price' | siTranslate }}</span>
+            <input class="si-input" type="number" step="0.01" min="0" [(ngModel)]="price" name="price" />
+          </label>
+          <label class="si-field si-field--check si-field--full">
+            <input type="checkbox" [(ngModel)]="tracksInventory" name="tracksInventory" />
+            <span>{{ 'products.tracksInventory' | siTranslate }}</span>
+          </label>
+          @if (tracksInventory) {
+            <label class="si-field">
+              <span class="si-field__label">{{ 'products.stock' | siTranslate }}</span>
+              <input class="si-input" type="number" step="0.001" min="0" [(ngModel)]="stockQuantity" name="stockQuantity" />
+            </label>
+          } @else {
+            <p class="prod-form__hint si-field--full">{{ 'products.noStockHint' | siTranslate }}</p>
+          }
+          <div class="si-field si-field--full prod-image">
+            <span class="si-field__label">{{ 'products.image' | siTranslate }}</span>
+            <div class="prod-image__row">
+              @if (resolveImage(imageUrl); as src) {
+                <img class="prod-image__preview" [src]="src" alt="" />
+              }
+              <div class="prod-image__controls">
+                <label class="si-btn si-btn--ghost si-btn--sm prod-image__pick">
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="onImageSelected($event)" hidden />
+                  {{ (uploading() ? 'products.uploading' : 'products.uploadImage') | siTranslate }}
+                </label>
+                @if (imageUrl) {
+                  <button type="button" class="si-btn si-btn--ghost si-btn--sm" (click)="clearImage()" [disabled]="uploading()">
+                    {{ 'products.removeImage' | siTranslate }}
+                  </button>
+                }
+              </div>
+            </div>
+            <p class="prod-form__hint">{{ 'products.imageHint' | siTranslate }}</p>
+          </div>
+          <label class="si-field si-field--check si-field--full">
+            <input type="checkbox" [(ngModel)]="isActive" name="isActive" />
+            <span>{{ 'products.active' | siTranslate }}</span>
+          </label>
+        </div>
+      </div>
+      <footer class="prod-modal__foot">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving() || uploading()" (click)="closeModal()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="si-btn si-btn--primary" [disabled]="saving() || uploading()" (click)="save()">
+          {{ (saving() ? 'products.saving' : 'products.save') | siTranslate }}
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (discountOpen()) {
+  <div class="prod-modal" role="dialog" aria-modal="true" (click)="closeDiscount()">
+    <div class="prod-modal__panel prod-modal__panel--sm" (click)="$event.stopPropagation()">
+      <header class="prod-modal__head">
+        <h2 class="prod-modal__title">{{ 'products.discountTitle' | siTranslate }}</h2>
+        <button type="button" class="prod-modal__close" (click)="closeDiscount()" [attr.aria-label]="'common.close' | siTranslate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <div class="prod-modal__body">
+        @if (discountTarget(); as t) {
+          <p class="prod-discount__target">{{ productName(t) }}</p>
+        }
+        <label class="si-field">
+          <span class="si-field__label">{{ 'discounts.percentLabel' | siTranslate }}</span>
+          <input class="si-input" type="number" min="1" max="100" step="1" [(ngModel)]="discountPercent" name="discountPercent" />
+        </label>
+      </div>
+      <footer class="prod-modal__foot">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeDiscount()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="saveProductDiscount()">
+          {{ (saving() ? 'products.saving' : 'products.applyDiscount') | siTranslate }}
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="prod-delete-title" (click)="closeDeleteConfirm()">
+    <div class="confirm-modal__panel" (click)="$event.stopPropagation()">
+      <div class="confirm-modal__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M19 6l-1 14H6L5 6" />
+          <path d="M10 11v6M14 11v6" />
+        </svg>
+      </div>
+      <h2 id="prod-delete-title" class="confirm-modal__title">{{ 'products.confirmDeleteTitle' | siTranslate }}</h2>
+      <p class="confirm-modal__question">{{ 'products.confirmDelete' | siTranslate }}</p>
+      <div class="confirm-modal__target">
+        @if (resolveImage(target.imageUrl); as src) {
+          <img class="confirm-modal__thumb" [src]="src" alt="" />
+        } @else {
+          <span class="confirm-modal__avatar" aria-hidden="true">{{ productName(target).slice(0, 1) }}</span>
+        }
+        <div>
+          <strong>{{ productName(target) }}</strong>
+          <small>{{ locale.lang() === 'ar' ? target.categoryNameAr : target.categoryNameEn }}</small>
+        </div>
+      </div>
+      <p class="confirm-modal__hint">{{ 'products.confirmDeleteHint' | siTranslate }}</p>
+      <div class="confirm-modal__actions">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeDeleteConfirm()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="confirm-modal__danger" [disabled]="saving()" (click)="confirmDelete()">
+          {{ (saving() ? 'products.saving' : 'products.confirmDeleteBtn') | siTranslate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

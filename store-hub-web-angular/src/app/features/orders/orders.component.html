@@ -1,0 +1,191 @@
+<div class="ord-page">
+  <header class="ord-toolbar">
+    <div>
+      <h1 class="ord-toolbar__title">{{ 'orders.heading' | siTranslate }}</h1>
+      <p class="ord-toolbar__desc">{{ 'orders.desc' | siTranslate }}</p>
+    </div>
+  </header>
+
+  <section class="ord-panel">
+    <div class="ord-filters">
+      <label class="ord-filters__search">
+        <span class="ord-filters__label">{{ 'orders.invoice' | siTranslate }}</span>
+        <input
+          class="si-input"
+          [(ngModel)]="search"
+          name="search"
+          (keyup.enter)="apply()"
+          [placeholder]="'orders.searchPh' | siTranslate"
+        />
+      </label>
+      <button type="button" class="si-btn si-btn--ghost" (click)="apply()">
+        {{ 'common.searchBtn' | siTranslate }}
+      </button>
+    </div>
+
+    @if (loading()) {
+      <p class="ord-state">{{ 'common.loading' | siTranslate }}</p>
+    }
+
+    @if (!loading() && result(); as r) {
+      @if (r.items.length === 0) {
+        <div class="ord-empty">
+          <p>{{ 'orders.empty' | siTranslate }}</p>
+        </div>
+      } @else {
+        <div class="ord-grid">
+          @for (row of r.items; track row.id; let i = $index) {
+            <article
+              class="ord-card"
+              [attr.data-accent]="i % 4"
+              [attr.data-status]="row.status"
+              [style.--delay]="(i % 12) * 40 + 'ms'"
+            >
+              <div class="ord-card__top">
+                <span class="ord-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" />
+                    <path d="M14 3v6h6" />
+                    <path d="M8 13h8M8 17h5" />
+                  </svg>
+                </span>
+                <span class="ord-card__status" [attr.data-status]="row.status">
+                  {{ statusLabel(row.status) }}
+                </span>
+              </div>
+
+              <div class="ord-card__invoice">
+                <span class="ord-card__hash">#</span>
+                <strong>{{ row.invoiceNumber }}</strong>
+              </div>
+
+              <p class="ord-card__total">{{ row.grandTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</p>
+
+              <div class="ord-card__meta">
+                <span class="ord-chip">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                    <path d="M3 10h18M8 3v4M16 3v4" />
+                  </svg>
+                  {{ row.createdOnUtc | date: 'short' }}
+                </span>
+                <span class="ord-chip">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <circle cx="12" cy="8" r="3.5" />
+                    <path d="M5 19a7 7 0 0 1 14 0" />
+                  </svg>
+                  {{ row.cashierName }}
+                </span>
+                <span class="ord-chip">{{ paymentLabel(row.paymentMethod) }}</span>
+                <span class="ord-chip">{{ 'orders.linesCount' | siTranslate: { count: row.lineCount } }}</span>
+                @if (row.discountTotal > 0) {
+                  <span class="ord-chip ord-chip--disc">
+                    {{ 'pos.discount' | siTranslate }} −{{ row.discountTotal | currency: 'EGP' : 'LE' : '1.0-2' }}
+                  </span>
+                }
+              </div>
+
+              <div class="ord-card__actions">
+                <button type="button" class="si-btn si-btn--ghost si-btn--sm" (click)="open(row)">
+                  {{ 'orders.view' | siTranslate }}
+                </button>
+                <button type="button" class="si-btn si-btn--primary si-btn--sm" (click)="print(row.id)">
+                  {{ 'orders.print' | siTranslate }}
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+
+        <div class="pager">
+          <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!r.hasPreviousPage">
+            {{ 'common.pagerPrev' | siTranslate }}
+          </button>
+          <span class="pager__meta">{{
+            'common.pagerMeta' | siTranslate: { page: r.page, totalPages: r.totalPages, totalCount: r.totalCount }
+          }}</span>
+          <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!r.hasNextPage">
+            {{ 'common.pagerNext' | siTranslate }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+</div>
+
+@if (detail(); as d) {
+  <div class="ord-modal" role="dialog" aria-modal="true" (click)="closeDetail()">
+    <div class="ord-modal__panel" (click)="$event.stopPropagation()">
+      <header class="ord-modal__head">
+        <div>
+          <h2 class="ord-modal__title">#{{ d.invoiceNumber }}</h2>
+          <p class="ord-modal__sub">
+            <span class="ord-card__status" [attr.data-status]="d.status">{{ statusLabel(d.status) }}</span>
+            <span>{{ paymentLabel(d.paymentMethod) }}</span>
+            <span>{{ d.cashierName }}</span>
+          </p>
+        </div>
+        <button type="button" class="ord-modal__close" (click)="closeDetail()" [attr.aria-label]="'common.close' | siTranslate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <div class="ord-modal__body">
+        <div class="ord-modal__totals">
+          @if (d.discountTotal > 0) {
+            <div class="ord-modal__row">
+              <span>{{ 'pos.subtotal' | siTranslate }}</span>
+              <span>{{ d.subtotal | currency: 'EGP' : 'LE' : '1.0-2' }}</span>
+            </div>
+            <div class="ord-modal__row is-disc">
+              <span>{{ 'pos.discount' | siTranslate }}</span>
+              <span>−{{ d.discountTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</span>
+            </div>
+          }
+          <div class="ord-modal__row is-total">
+            <span>{{ 'orders.total' | siTranslate }}</span>
+            <strong>{{ d.grandTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</strong>
+          </div>
+        </div>
+
+        <ul class="ord-lines">
+          @for (l of d.lines; track l.id) {
+            <li class="ord-line">
+              <div class="ord-line__main">
+                <strong>{{ lineName(l) }}</strong>
+                <span class="ord-line__qty">
+                  {{ l.quantity }} × {{ l.unitPrice | currency: 'EGP' : 'LE' : '1.0-2' }}
+                  @if (l.discountPercent > 0) {
+                    <em>−{{ l.discountPercent }}%</em>
+                  }
+                </span>
+                <span class="ord-line__sum">{{ l.lineTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</span>
+              </div>
+              @if (canReturn() && remaining(l) > 0) {
+                <label class="ord-line__return">
+                  <span>{{ 'orders.returnQty' | siTranslate }}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    [max]="remaining(l)"
+                    [ngModel]="returnQtys()[l.id]"
+                    (ngModelChange)="setReturnQty(l.id, $event)"
+                    [name]="'ret-' + l.id"
+                  />
+                  <small>/ {{ remaining(l) }}</small>
+                </label>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+      <footer class="ord-modal__foot">
+        <button type="button" class="si-btn si-btn--ghost" (click)="print(d.id)">{{ 'orders.print' | siTranslate }}</button>
+        @if (canReturn() && d.status !== 3) {
+          <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="submitReturn()">
+            {{ (saving() ? 'orders.returning' : 'orders.doReturn') | siTranslate }}
+          </button>
+        }
+      </footer>
+    </div>
+  </div>
+}

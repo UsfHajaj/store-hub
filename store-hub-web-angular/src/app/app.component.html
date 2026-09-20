@@ -1,0 +1,14 @@
+@if (loading.active()) {
+  <div class="app-loading" aria-busy="true" aria-live="polite">
+    <div class="app-loading__spinner"></div>
+  </div>
+}
+@if (errors.message(); as err) {
+  <div class="app-toast" role="alert">
+    <span>{{ err }}</span>
+    <button type="button" class="app-toast__close" (click)="errors.clear()" [attr.aria-label]="'common.close' | siTranslate">
+      ×
+    </button>
+  </div>
+}
+<router-outlet />

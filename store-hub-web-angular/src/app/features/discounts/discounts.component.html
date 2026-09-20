@@ -1,0 +1,229 @@
+<div class="disc-page">
+  <header class="disc-toolbar">
+    <div>
+      <h1 class="disc-toolbar__title">{{ 'discounts.heading' | siTranslate }}</h1>
+      <p class="disc-toolbar__desc">{{ 'discounts.desc' | siTranslate }}</p>
+    </div>
+    @if (canManage()) {
+      <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+        {{ 'discounts.create' | siTranslate }}
+      </button>
+    }
+  </header>
+
+  <section class="disc-panel">
+    <div class="disc-filters">
+      <label class="disc-filters__search">
+        <span class="disc-filters__label">{{ 'common.search' | siTranslate }}</span>
+        <input
+          class="si-input"
+          [(ngModel)]="search"
+          name="search"
+          (keyup.enter)="apply()"
+          [placeholder]="'discounts.searchPh' | siTranslate"
+        />
+      </label>
+      <button type="button" class="si-btn si-btn--ghost" (click)="apply()">
+        {{ 'common.searchBtn' | siTranslate }}
+      </button>
+    </div>
+
+    @if (loading()) {
+      <p class="disc-state">{{ 'common.loading' | siTranslate }}</p>
+    }
+
+    @if (!loading() && result(); as p) {
+      @if (p.items.length === 0) {
+        <div class="disc-empty">
+          <p>{{ 'discounts.empty' | siTranslate }}</p>
+          @if (canManage()) {
+            <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+              {{ 'discounts.create' | siTranslate }}
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="disc-grid">
+          @for (d of p.items; track d.id; let i = $index) {
+            <article class="disc-card" [attr.data-accent]="i % 3" [class.is-off]="!d.isActive">
+              <div class="disc-card__head">
+                <div class="disc-card__pct">{{ d.discountPercent }}%</div>
+                <div class="disc-card__main">
+                  <div class="disc-card__title-row">
+                    <h2 class="disc-card__name">{{ discountName(d) }}</h2>
+                    <span class="disc-card__status" [class.is-off]="!d.isActive">
+                      {{ (d.isActive ? 'discounts.active' : 'discounts.inactive') | siTranslate }}
+                    </span>
+                  </div>
+                  <p class="disc-card__scope">{{ scopeLabel(d) }}</p>
+                </div>
+              </div>
+              @if (canManage()) {
+                <div class="disc-card__actions">
+                  <button type="button" class="si-btn si-btn--primary si-btn--sm" (click)="openEdit(d)">
+                    {{ 'discounts.edit' | siTranslate }}
+                  </button>
+                  <button type="button" class="si-btn si-btn--ghost si-btn--sm disc-card__del" (click)="remove(d, $event)">
+                    {{ 'discounts.delete' | siTranslate }}
+                  </button>
+                </div>
+              }
+            </article>
+          }
+        </div>
+
+        <div class="pager">
+          <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!p.hasPreviousPage">
+            {{ 'common.pagerPrev' | siTranslate }}
+          </button>
+          <span class="pager__meta">{{
+            'common.pagerMeta' | siTranslate: { page: p.page, totalPages: p.totalPages, totalCount: p.totalCount }
+          }}</span>
+          <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!p.hasNextPage">
+            {{ 'common.pagerNext' | siTranslate }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+</div>
+
+@if (modalOpen()) {
+  <div class="disc-modal" role="dialog" aria-modal="true" (click)="closeModal()">
+    <div class="disc-modal__panel" (click)="$event.stopPropagation()">
+      <header class="disc-modal__head">
+        <h2 class="disc-modal__title">
+          {{ (modalMode() === 'create' ? 'discounts.createTitle' : 'discounts.editTitle') | siTranslate }}
+        </h2>
+        <button type="button" class="disc-modal__close" (click)="closeModal()" [attr.aria-label]="'common.close' | siTranslate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <div class="disc-modal__body">
+        <p class="disc-hint">{{ 'discounts.scopeHint' | siTranslate }}</p>
+
+        <div class="disc-scope" role="radiogroup">
+          <label class="disc-scope__opt" [class.is-on]="scopeMode === 'all'">
+            <input type="radio" name="scope" [(ngModel)]="scopeMode" value="all" />
+            <span>{{ 'discounts.scopeAll' | siTranslate }}</span>
+          </label>
+          <label class="disc-scope__opt" [class.is-on]="scopeMode === 'category'">
+            <input type="radio" name="scope" [(ngModel)]="scopeMode" value="category" />
+            <span>{{ 'discounts.scopeByCategory' | siTranslate }}</span>
+          </label>
+          <label class="disc-scope__opt" [class.is-on]="scopeMode === 'product'">
+            <input type="radio" name="scope" [(ngModel)]="scopeMode" value="product" />
+            <span>{{ 'discounts.scopeByProduct' | siTranslate }}</span>
+          </label>
+        </div>
+
+        @if (scopeMode === 'category') {
+          <label class="si-field">
+            <span class="si-field__label">{{ 'products.category' | siTranslate }}</span>
+            <select class="si-input" [(ngModel)]="categoryId" name="categoryId">
+              <option value="">{{ 'discounts.pickCategory' | siTranslate }}</option>
+              @for (c of categories(); track c.id) {
+                <option [value]="c.id">{{ categoryName(c) }}</option>
+              }
+            </select>
+          </label>
+        }
+
+        @if (scopeMode === 'product') {
+          <label class="si-field">
+            <span class="si-field__label">{{ 'discounts.searchProduct' | siTranslate }}</span>
+            <input
+              class="si-input"
+              [(ngModel)]="productQuery"
+              name="productQuery"
+              (ngModelChange)="onProductQuery()"
+              [placeholder]="'discounts.searchProductPh' | siTranslate"
+            />
+          </label>
+          @if (searching()) {
+            <p class="disc-search-state">{{ 'common.loading' | siTranslate }}</p>
+          }
+          @if (productHits().length > 0) {
+            <ul class="disc-hits">
+              @for (p of productHits(); track p.id) {
+                <li>
+                  <button type="button" class="disc-hits__btn" (click)="pickProduct(p)">
+                    {{ productLabel(p) }}
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+          @if (selectedProduct(); as sp) {
+            <div class="disc-picked">
+              <span>{{ productLabel(sp) }}</span>
+              <button type="button" class="si-btn si-btn--ghost si-btn--sm" (click)="clearPickedProduct()">
+                {{ 'common.cancel' | siTranslate }}
+              </button>
+            </div>
+          }
+        }
+
+        <div class="disc-form">
+          <label class="si-field">
+            <span class="si-field__label">{{ 'discounts.percentLabel' | siTranslate }}</span>
+            <input class="si-input" type="number" min="1" max="100" step="1" [(ngModel)]="discountPercent" name="discountPercent" />
+          </label>
+          <label class="si-field">
+            <span class="si-field__label">{{ 'discounts.nameAr' | siTranslate }}</span>
+            <input class="si-input" [(ngModel)]="nameAr" name="nameAr" [placeholder]="'discounts.nameOptional' | siTranslate" />
+          </label>
+          <label class="si-field">
+            <span class="si-field__label">{{ 'discounts.nameEn' | siTranslate }}</span>
+            <input class="si-input" [(ngModel)]="nameEn" name="nameEn" [placeholder]="'discounts.nameOptional' | siTranslate" />
+          </label>
+          <label class="si-field si-field--check">
+            <input type="checkbox" [(ngModel)]="isActive" name="isActive" />
+            <span>{{ 'discounts.active' | siTranslate }}</span>
+          </label>
+        </div>
+      </div>
+      <footer class="disc-modal__foot">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeModal()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="save()">
+          {{ (saving() ? 'discounts.saving' : 'discounts.save') | siTranslate }}
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="disc-delete-title" (click)="closeDeleteConfirm()">
+    <div class="confirm-modal__panel" (click)="$event.stopPropagation()">
+      <div class="confirm-modal__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M19 6l-1 14H6L5 6" />
+          <path d="M10 11v6M14 11v6" />
+        </svg>
+      </div>
+      <h2 id="disc-delete-title" class="confirm-modal__title">{{ 'discounts.confirmDeleteTitle' | siTranslate }}</h2>
+      <p class="confirm-modal__question">{{ 'discounts.confirmDelete' | siTranslate }}</p>
+      <div class="confirm-modal__target">
+        <span class="confirm-modal__pct" aria-hidden="true">{{ target.discountPercent }}%</span>
+        <div>
+          <strong>{{ discountName(target) }}</strong>
+          <small>{{ scopeLabel(target) }}</small>
+        </div>
+      </div>
+      <p class="confirm-modal__hint">{{ 'discounts.confirmDeleteHint' | siTranslate }}</p>
+      <div class="confirm-modal__actions">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeDeleteConfirm()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="confirm-modal__danger" [disabled]="saving()" (click)="confirmDelete()">
+          {{ (saving() ? 'discounts.saving' : 'discounts.confirmDeleteBtn') | siTranslate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

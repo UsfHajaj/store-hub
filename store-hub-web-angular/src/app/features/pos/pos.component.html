@@ -1,0 +1,178 @@
+<div class="pos-page">
+  <div class="pos-layout">
+    <section class="pos-catalog">
+      <div class="pos-toolbar">
+        <label class="pos-search">
+          <span class="pos-search__label">{{ 'pos.searchBtn' | siTranslate }}</span>
+          <input
+            class="si-input"
+            [(ngModel)]="search"
+            name="search"
+            (keyup.enter)="onSearchEnter()"
+            [placeholder]="'pos.searchPh' | siTranslate"
+          />
+        </label>
+        <button type="button" class="si-btn si-btn--ghost" (click)="apply()">{{ 'pos.searchBtn' | siTranslate }}</button>
+      </div>
+
+      <div class="pos-cats" role="tablist">
+        <button type="button" class="pos-cats__item" [class.is-active]="!filterCategoryId" (click)="setCategoryFilter('')">
+          {{ 'products.allCategories' | siTranslate }}
+        </button>
+        @for (c of categories(); track c.id) {
+          <button type="button" class="pos-cats__item" [class.is-active]="filterCategoryId === c.id" (click)="setCategoryFilter(c.id)">
+            {{ categoryName(c) }}
+          </button>
+        }
+      </div>
+
+      @if (loading()) {
+        <p class="pos-state">{{ 'common.loading' | siTranslate }}</p>
+      }
+
+      @if (!loading() && result(); as r) {
+        @if (r.items.length === 0) {
+          <div class="pos-empty">
+            <p>{{ 'pos.emptyProducts' | siTranslate }}</p>
+          </div>
+        } @else {
+          <div class="pos-grid">
+            @for (p of r.items; track p.id; let i = $index) {
+              <button
+                type="button"
+                class="pos-tile"
+                [attr.data-accent]="i % 3"
+                (click)="addToCart(p)"
+                [disabled]="!p.isActive || (p.tracksInventory !== false && p.stockQuantity <= 0)"
+              >
+                @if (discountPercentFor(p.id, p.categoryId) > 0) {
+                  <span class="pos-tile__badge">-{{ discountPercentFor(p.id, p.categoryId) }}%</span>
+                }
+                <div class="pos-tile__media">
+                  @if (resolveImage(p.imageUrl); as src) {
+                    <img [src]="src" [alt]="productName(p)" loading="lazy" />
+                  } @else {
+                    <span class="pos-tile__ph" aria-hidden="true">{{ productName(p).slice(0, 1) }}</span>
+                  }
+                </div>
+                <span class="pos-tile__name">{{ productName(p) }}</span>
+                @if (discountPercentFor(p.id, p.categoryId) > 0) {
+                  <span class="pos-tile__price">
+                    <s>{{ p.price | currency: 'EGP' : 'LE' : '1.0-2' }}</s>
+                    <strong>{{ (p.price * (1 - discountPercentFor(p.id, p.categoryId) / 100)) | currency: 'EGP' : 'LE' : '1.0-2' }}</strong>
+                  </span>
+                } @else {
+                  <span class="pos-tile__price"><strong>{{ p.price | currency: 'EGP' : 'LE' : '1.0-2' }}</strong></span>
+                }
+              </button>
+            }
+          </div>
+          <div class="pos-pager">
+            <button type="button" class="si-btn si-btn--ghost si-btn--sm" [disabled]="!r.hasPreviousPage" (click)="prev()">
+              {{ 'common.pagerPrev' | siTranslate }}
+            </button>
+            <span class="pos-pager__meta">{{ r.page }} / {{ r.totalPages }}</span>
+            <button type="button" class="si-btn si-btn--ghost si-btn--sm" [disabled]="!r.hasNextPage" (click)="next()">
+              {{ 'common.pagerNext' | siTranslate }}
+            </button>
+          </div>
+        }
+      }
+    </section>
+
+    <aside class="pos-cart">
+      <header class="pos-cart__head">
+        <h2>{{ 'pos.cart' | siTranslate }}</h2>
+        <span class="pos-cart__count" [class.is-empty]="itemCount() === 0">{{ itemCount() }}</span>
+      </header>
+
+      @if (lastSale(); as sale) {
+        <div class="pos-success">
+          <p class="pos-success__title">{{ 'pos.saleDone' | siTranslate: { n: sale.invoiceNumber } }}</p>
+          @if (sale.discountTotal > 0) {
+            <p class="pos-success__meta">
+              <span>{{ 'pos.subtotal' | siTranslate }}: {{ sale.subtotal | currency: 'EGP' : 'LE' : '1.0-2' }}</span>
+              <span>{{ 'pos.discount' | siTranslate }}: −{{ sale.discountTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</span>
+            </p>
+          }
+          <p class="pos-success__total">{{ sale.grandTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</p>
+          <div class="pos-success__actions">
+            <button type="button" class="si-btn si-btn--primary" (click)="printLastInvoice()">{{ 'pos.printInvoice' | siTranslate }}</button>
+            <button type="button" class="si-btn si-btn--ghost" (click)="startNewSale()">{{ 'pos.newSale' | siTranslate }}</button>
+          </div>
+        </div>
+      } @else if (cart().length === 0) {
+        <div class="pos-cart-empty">
+          <p>{{ 'pos.emptyCart' | siTranslate }}</p>
+        </div>
+      } @else {
+        <ul class="pos-lines">
+          @for (l of cart(); track l.productId) {
+            <li class="pos-line">
+              <div class="pos-line__info">
+                <span class="pos-line__name">{{ lineName(l) }}</span>
+                @if (discountPercentFor(l.productId, l.categoryId) > 0) {
+                  <span class="pos-line__price">
+                    <s>{{ l.unitPrice | currency: 'EGP' : 'LE' : '1.0-2' }}</s>
+                    {{ lineDiscountedUnit(l) | currency: 'EGP' : 'LE' : '1.0-2' }}
+                    <em>−{{ discountPercentFor(l.productId, l.categoryId) }}%</em>
+                  </span>
+                } @else {
+                  <span class="pos-line__price">{{ l.unitPrice | currency: 'EGP' : 'LE' : '1.0-2' }}</span>
+                }
+              </div>
+              <div class="pos-line__qty">
+                <button type="button" (click)="changeQty(l.productId, -1)" aria-label="-">−</button>
+                <input type="number" min="1" step="1" [ngModel]="l.quantity" (ngModelChange)="setQty(l.productId, $event)" [name]="'q-' + l.productId" />
+                <button type="button" (click)="changeQty(l.productId, 1)" aria-label="+">+</button>
+                <button type="button" class="pos-line__rm" (click)="removeLine(l.productId)" aria-label="remove">×</button>
+              </div>
+            </li>
+          }
+        </ul>
+
+        <div class="pos-pay">
+          <label class="si-field">
+            <span class="si-field__label">{{ 'pos.payment' | siTranslate }}</span>
+            <select class="si-input" [(ngModel)]="paymentMethod" name="paymentMethod">
+              @for (opt of paymentOptions; track opt.value) {
+                <option [ngValue]="opt.value">{{ opt.labelKey | siTranslate }}</option>
+              }
+            </select>
+          </label>
+          <label class="si-field">
+            <span class="si-field__label">{{ 'pos.notes' | siTranslate }}</span>
+            <input class="si-input" [(ngModel)]="notes" name="notes" />
+          </label>
+        </div>
+
+        <div class="pos-cart__foot">
+          <div class="pos-cart__totals">
+            @if (estimatedDiscount() > 0) {
+              <div class="pos-cart__row">
+                <span>{{ 'pos.subtotal' | siTranslate }}</span>
+                <span>{{ estimatedSubtotal() | currency: 'EGP' : 'LE' : '1.0-2' }}</span>
+              </div>
+              <div class="pos-cart__row is-disc">
+                <span>{{ 'pos.discount' | siTranslate }}</span>
+                <span>−{{ estimatedDiscount() | currency: 'EGP' : 'LE' : '1.0-2' }}</span>
+              </div>
+            }
+            <div class="pos-cart__total">
+              <span>{{ 'pos.total' | siTranslate }}</span>
+              <strong>{{ estimatedTotal() | currency: 'EGP' : 'LE' : '1.0-2' }}</strong>
+            </div>
+          </div>
+          <div class="pos-cart__actions">
+            <button type="button" class="si-btn si-btn--ghost" (click)="clearCart()" [disabled]="checkingOut()">
+              {{ 'pos.clear' | siTranslate }}
+            </button>
+            <button type="button" class="si-btn si-btn--primary" (click)="checkout()" [disabled]="checkingOut() || !canCheckout()">
+              {{ (checkingOut() ? 'pos.checkingOut' : 'pos.checkout') | siTranslate }}
+            </button>
+          </div>
+        </div>
+      }
+    </aside>
+  </div>
+</div>

@@ -1,0 +1,133 @@
+<div class="inv-page">
+  <header class="inv-toolbar">
+    <div>
+      <h1 class="inv-toolbar__title">{{ 'inventory.heading' | siTranslate }}</h1>
+      <p class="inv-toolbar__desc">{{ 'inventory.desc' | siTranslate }}</p>
+    </div>
+  </header>
+
+  <section class="inv-panel">
+    <div class="inv-filters">
+      <label class="inv-filters__search">
+        <span class="inv-filters__label">{{ 'common.search' | siTranslate }}</span>
+        <input
+          class="si-input"
+          [(ngModel)]="search"
+          name="search"
+          (keyup.enter)="apply()"
+          [placeholder]="'inventory.searchPh' | siTranslate"
+        />
+      </label>
+      <label class="inv-check">
+        <input type="checkbox" [(ngModel)]="lowStockOnly" name="lowStockOnly" (ngModelChange)="apply()" />
+        <span>{{ 'inventory.lowOnly' | siTranslate }}</span>
+      </label>
+      <button type="button" class="si-btn si-btn--ghost" (click)="apply()">
+        {{ 'common.searchBtn' | siTranslate }}
+      </button>
+    </div>
+
+    @if (loading()) {
+      <p class="inv-state">{{ 'common.loading' | siTranslate }}</p>
+    }
+
+    @if (!loading() && result(); as r) {
+      @if (r.items.length === 0) {
+        <div class="inv-empty">
+          <p>{{ 'inventory.empty' | siTranslate }}</p>
+        </div>
+      } @else {
+        <div class="inv-grid">
+          @for (item of r.items; track item.productId; let i = $index) {
+            <article
+              class="inv-card"
+              [class.is-low]="item.isLowStock"
+              [attr.data-accent]="i % 4"
+              [style.--delay]="(i % 12) * 40 + 'ms'"
+            >
+              <div class="inv-card__top">
+                <span class="inv-card__icon" aria-hidden="true">
+                  @if (item.isLowStock) {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M12 9v4M12 17h.01" />
+                      <path d="M10.3 4.3 2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" />
+                    </svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                      <path d="M3.3 7 12 12l8.7-5M12 22V12" />
+                    </svg>
+                  }
+                </span>
+                <span class="inv-card__badge" [class.is-low]="item.isLowStock">
+                  {{ (item.isLowStock ? 'inventory.lowBadge' : 'inventory.okBadge') | siTranslate }}
+                </span>
+              </div>
+
+              <h2 class="inv-card__name">{{ name(item) }}</h2>
+              <p class="inv-card__cat">{{ cat(item) }}</p>
+
+              <div class="inv-card__qty">
+                <div>
+                  <span class="inv-card__qty-label">{{ 'inventory.stockLabel' | siTranslate }}</span>
+                  <strong [class.is-low]="item.isLowStock">{{ item.stockQuantity }}</strong>
+                </div>
+                <span class="inv-card__reorder">{{ 'inventory.reorder' | siTranslate: { n: item.reorderLevel } }}</span>
+              </div>
+
+              <button type="button" class="si-btn si-btn--primary si-btn--sm inv-card__btn" (click)="openAdjust(item)">
+                {{ 'inventory.adjust' | siTranslate }}
+              </button>
+            </article>
+          }
+        </div>
+
+        <div class="pager">
+          <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!r.hasPreviousPage">
+            {{ 'common.pagerPrev' | siTranslate }}
+          </button>
+          <span class="pager__meta">{{
+            'common.pagerMeta' | siTranslate: { page: r.page, totalPages: r.totalPages, totalCount: r.totalCount }
+          }}</span>
+          <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!r.hasNextPage">
+            {{ 'common.pagerNext' | siTranslate }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+</div>
+
+@if (adjustTarget(); as t) {
+  <div class="inv-modal" role="dialog" aria-modal="true" (click)="closeAdjust()">
+    <div class="inv-modal__panel" (click)="$event.stopPropagation()">
+      <header class="inv-modal__head">
+        <div>
+          <h2 class="inv-modal__title">{{ 'inventory.adjustTitle' | siTranslate }}</h2>
+          <p class="inv-modal__sub">{{ name(t) }} · {{ 'inventory.current' | siTranslate: { n: t.stockQuantity } }}</p>
+        </div>
+        <button type="button" class="inv-modal__close" (click)="closeAdjust()" [attr.aria-label]="'common.close' | siTranslate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <div class="inv-modal__body">
+        <label class="si-field">
+          <span class="si-field__label">{{ 'inventory.change' | siTranslate }}</span>
+          <input class="si-input" type="number" [(ngModel)]="quantityChange" name="quantityChange" />
+        </label>
+        <label class="si-field">
+          <span class="si-field__label">{{ 'inventory.notes' | siTranslate }}</span>
+          <input class="si-input" [(ngModel)]="notes" name="notes" />
+        </label>
+      </div>
+      <footer class="inv-modal__foot">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeAdjust()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="saveAdjust()">
+          {{ (saving() ? 'common.loading' : 'inventory.save') | siTranslate }}
+        </button>
+      </footer>
+    </div>
+  </div>
+}

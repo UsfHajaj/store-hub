@@ -1,0 +1,120 @@
+<header class="inv-toolbar">
+  <p class="inv-toolbar__desc">{{ 'invoiceSettings.desc' | siTranslate }}</p>
+  @if (storeLabel()) {
+    <span class="inv-toolbar__store">{{ storeLabel() }}</span>
+  }
+</header>
+
+@if (loading()) {
+  <p class="inv-state">{{ 'common.loading' | siTranslate }}</p>
+} @else {
+  <div class="inv-layout">
+    <section class="inv-card">
+      <div class="inv-form">
+        <label class="si-field">
+          <span class="si-field__label">{{ 'invoiceSettings.nameAr' | siTranslate }}</span>
+          <input
+            class="si-input"
+            [(ngModel)]="invoiceDisplayNameAr"
+            name="invoiceDisplayNameAr"
+            [disabled]="!canManage()"
+            [placeholder]="'invoiceSettings.namePh' | siTranslate"
+          />
+        </label>
+        <label class="si-field">
+          <span class="si-field__label">{{ 'invoiceSettings.nameEn' | siTranslate }}</span>
+          <input
+            class="si-input"
+            [(ngModel)]="invoiceDisplayNameEn"
+            name="invoiceDisplayNameEn"
+            [disabled]="!canManage()"
+            [placeholder]="'invoiceSettings.namePh' | siTranslate"
+          />
+        </label>
+        <label class="si-field">
+          <span class="si-field__label">{{ 'invoiceSettings.taxNumber' | siTranslate }}</span>
+          <input class="si-input" [(ngModel)]="taxNumber" name="taxNumber" [disabled]="!canManage()" autocomplete="off" />
+        </label>
+        <label class="si-field inv-form__full">
+          <span class="si-field__label">{{ 'invoiceSettings.footer' | siTranslate }}</span>
+          <textarea
+            class="si-input inv-textarea"
+            rows="3"
+            [(ngModel)]="invoiceFooter"
+            name="invoiceFooter"
+            [disabled]="!canManage()"
+            [placeholder]="'invoiceSettings.footerPh' | siTranslate"
+          ></textarea>
+        </label>
+
+        <div class="si-field inv-form__full">
+          <span class="si-field__label">{{ 'invoiceSettings.logo' | siTranslate }}</span>
+          <div class="inv-logo">
+            @if (resolveImage(logoUrl); as src) {
+              <img class="inv-logo__preview" [src]="src" alt="" />
+            } @else {
+              <div class="inv-logo__ph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <path d="M21 15l-5-5L5 21" />
+                </svg>
+              </div>
+            }
+            @if (canManage()) {
+              <div class="inv-logo__controls">
+                <label class="si-btn si-btn--ghost si-btn--sm inv-logo__pick">
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="onLogoSelected($event)" hidden />
+                  {{ (uploading() ? 'invoiceSettings.uploading' : 'invoiceSettings.uploadLogo') | siTranslate }}
+                </label>
+                @if (logoUrl) {
+                  <button type="button" class="si-btn si-btn--ghost si-btn--sm" (click)="clearLogo()" [disabled]="uploading()">
+                    {{ 'invoiceSettings.removeLogo' | siTranslate }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (canManage()) {
+        <div class="inv-actions">
+          @if (saved()) {
+            <span class="inv-saved">{{ 'invoiceSettings.saved' | siTranslate }}</span>
+          }
+          <button type="button" class="si-btn si-btn--primary" [disabled]="saving() || uploading()" (click)="save()">
+            {{ (saving() ? 'invoiceSettings.saving' : 'invoiceSettings.save') | siTranslate }}
+          </button>
+        </div>
+      } @else {
+        <p class="inv-readonly">{{ 'invoiceSettings.readOnly' | siTranslate }}</p>
+      }
+    </section>
+
+    <aside class="inv-preview" aria-label="preview">
+      <span class="inv-preview__tag">{{ 'invoiceSettings.preview' | siTranslate }}</span>
+      <div class="inv-receipt">
+        @if (resolveImage(logoUrl); as src) {
+          <img class="inv-receipt__logo" [src]="src" alt="" />
+        }
+        <strong class="inv-receipt__name">{{
+          (locale.lang() === 'ar' ? invoiceDisplayNameAr : invoiceDisplayNameEn) || storeLabel()
+        }}</strong>
+        @if (taxNumber) {
+          <span class="inv-receipt__tax">{{ 'invoiceSettings.taxNumber' | siTranslate }}: {{ taxNumber }}</span>
+        }
+        <div class="inv-receipt__rule"></div>
+        <div class="inv-receipt__line"><span>{{ 'invoiceSettings.sampleItem' | siTranslate }}</span><span>25.00</span></div>
+        <div class="inv-receipt__line"><span>{{ 'invoiceSettings.sampleItem2' | siTranslate }}</span><span>12.50</span></div>
+        <div class="inv-receipt__rule"></div>
+        <div class="inv-receipt__line inv-receipt__line--total">
+          <span>{{ 'invoiceSettings.sampleTotal' | siTranslate }}</span><span>37.50</span>
+        </div>
+        @if (invoiceFooter) {
+          <p class="inv-receipt__footer">{{ invoiceFooter }}</p>
+        }
+      </div>
+    </aside>
+  </div>
+}

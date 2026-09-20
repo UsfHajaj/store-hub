@@ -1,0 +1,27 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: var(--si-surface-muted);
+  border: 1px solid var(--si-border);
+}
+
+.page-intro {
+  color: var(--si-text);
+  opacity: 0.88;
+}
+
+.si-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--si-text);
+  cursor: pointer;
+}

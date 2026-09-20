@@ -1,0 +1,161 @@
+<div class="stores-page">
+  <header class="stores-toolbar">
+    <p class="stores-toolbar__desc">{{ 'stores.desc' | siTranslate }}</p>
+    <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+      {{ 'stores.create' | siTranslate }}
+    </button>
+  </header>
+
+  <section class="si-panel si-panel--soft">
+    <div class="panel-toolbar">
+      <div class="panel-toolbar__main toolbar">
+        <label class="si-field si-field--grow">
+          <span class="si-field__label">{{ 'common.search' | siTranslate }}</span>
+          <input class="si-input" [(ngModel)]="search" name="search" (keyup.enter)="apply()" />
+        </label>
+        <button type="button" class="si-btn si-btn--primary" (click)="apply()">
+          {{ 'common.searchBtn' | siTranslate }}
+        </button>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <p class="stores-state">{{ 'common.loading' | siTranslate }}</p>
+    }
+
+    @if (!loading() && result(); as p) {
+      @if (p.items.length === 0) {
+        <div class="stores-empty">
+          <p>{{ 'stores.empty' | siTranslate }}</p>
+          <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+            {{ 'stores.create' | siTranslate }}
+          </button>
+        </div>
+      } @else {
+        <div class="stores-grid">
+          @for (store of p.items; track store.id; let i = $index) {
+            <article class="store-card" [attr.data-accent]="i % 3">
+              <div class="store-card__top">
+                <div class="store-card__identity">
+                  <span class="store-card__avatar" aria-hidden="true">{{ storeName(store).slice(0, 1) }}</span>
+                  <div>
+                    <h2 class="store-card__name">{{ storeName(store) }}</h2>
+                    <p class="store-card__meta">{{ 'stores.memberCount' | siTranslate: { count: store.memberCount } }}</p>
+                  </div>
+                </div>
+                <span class="store-card__status" [class.is-off]="!store.isActive">
+                  {{ (store.isActive ? 'stores.active' : 'stores.inactive') | siTranslate }}
+                </span>
+              </div>
+              <div class="store-card__actions">
+                <button type="button" class="si-btn si-btn--primary si-btn--sm" (click)="openEdit(store)">
+                  {{ 'stores.edit' | siTranslate }}
+                </button>
+                <button type="button" class="si-btn si-btn--ghost si-btn--sm" (click)="openMembers(store)">
+                  {{ 'stores.members' | siTranslate }}
+                </button>
+                <button type="button" class="si-btn si-btn--ghost si-btn--sm" (click)="toggleActive(store)">
+                  {{ (store.isActive ? 'stores.deactivate' : 'stores.activate') | siTranslate }}
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+
+        <div class="pager">
+          <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!p.hasPreviousPage">
+            {{ 'common.pagerPrev' | siTranslate }}
+          </button>
+          <span class="pager__meta">{{
+            'common.pagerMeta' | siTranslate: { page: p.page, totalPages: p.totalPages, totalCount: p.totalCount }
+          }}</span>
+          <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!p.hasNextPage">
+            {{ 'common.pagerNext' | siTranslate }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+</div>
+
+@if (modalOpen()) {
+  <div class="store-modal" role="dialog" aria-modal="true" (click)="closeModal()">
+    <div class="store-modal__panel" (click)="$event.stopPropagation()">
+      <header class="store-modal__head">
+        <h2 class="store-modal__title">
+          @if (modalMode() === 'create') {
+            {{ 'stores.createTitle' | siTranslate }}
+          } @else if (modalMode() === 'edit') {
+            {{ 'stores.editTitle' | siTranslate }}
+          } @else {
+            {{ 'stores.membersTitle' | siTranslate }}
+          }
+        </h2>
+        <button type="button" class="store-modal__close" (click)="closeModal()" [attr.aria-label]="'common.close' | siTranslate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </header>
+
+      @if (modalLoading()) {
+        <p class="stores-state">{{ 'common.loading' | siTranslate }}</p>
+      } @else {
+        <div class="store-modal__body">
+          @if (modalMode() === 'members') {
+            <p class="store-modal__hint">{{ 'stores.membersHint' | siTranslate }}</p>
+            <ul class="member-list">
+              @for (u of users(); track u.id) {
+                <li>
+                  <label class="member-row">
+                    <input type="checkbox" [checked]="isMember(u.id)" (change)="toggleMember(u.id)" />
+                    <span>
+                      <strong>{{ userLabel(u) }}</strong>
+                      <small>{{ u.email }}</small>
+                    </span>
+                  </label>
+                </li>
+              }
+            </ul>
+          } @else {
+            <div class="stores-form">
+              <label class="si-field">
+                <span class="si-field__label">{{ 'stores.nameAr' | siTranslate }}</span>
+                <input class="si-input" [(ngModel)]="nameAr" name="nameAr" />
+              </label>
+              <label class="si-field">
+                <span class="si-field__label">{{ 'stores.nameEn' | siTranslate }}</span>
+                <input class="si-input" [(ngModel)]="nameEn" name="nameEn" />
+              </label>
+            </div>
+
+            @if (modalMode() === 'create') {
+              <h3 class="member-title">{{ 'stores.members' | siTranslate }}</h3>
+              <p class="store-modal__hint">{{ 'stores.membersHint' | siTranslate }}</p>
+              <ul class="member-list">
+                @for (u of users(); track u.id) {
+                  <li>
+                    <label class="member-row">
+                      <input type="checkbox" [checked]="isMember(u.id)" (change)="toggleMember(u.id)" />
+                      <span>
+                        <strong>{{ userLabel(u) }}</strong>
+                        <small>{{ u.email }}</small>
+                      </span>
+                    </label>
+                  </li>
+                }
+              </ul>
+            }
+          }
+        </div>
+
+        <footer class="store-modal__foot">
+          <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeModal()">
+            {{ 'common.cancel' | siTranslate }}
+          </button>
+          <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="save()">
+            {{ (saving() ? 'stores.saving' : 'stores.save') | siTranslate }}
+          </button>
+        </footer>
+      }
+    </div>
+  </div>
+}

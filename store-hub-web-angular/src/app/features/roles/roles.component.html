@@ -1,0 +1,216 @@
+<div class="roles-page">
+  <header class="roles-toolbar">
+    <div class="roles-toolbar__copy">
+      <p class="roles-toolbar__desc">{{ 'roles.desc' | siTranslate }}</p>
+    </div>
+    <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+      {{ 'roles.create' | siTranslate }}
+    </button>
+  </header>
+
+  <section class="si-panel si-panel--soft">
+    <div class="panel-toolbar">
+      <div class="panel-toolbar__main toolbar">
+        <label class="si-field si-field--grow">
+          <span class="si-field__label">{{ 'common.search' | siTranslate }}</span>
+          <input class="si-input" [(ngModel)]="search" name="search" (keyup.enter)="apply()" />
+        </label>
+        <button type="button" class="si-btn si-btn--primary" (click)="apply()">
+          {{ 'common.searchBtn' | siTranslate }}
+        </button>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <p class="roles-state">{{ 'common.loading' | siTranslate }}</p>
+    }
+
+    @if (!loading() && result(); as p) {
+      @if (p.items.length === 0) {
+        <div class="roles-empty">
+          <p>{{ 'roles.empty' | siTranslate }}</p>
+          <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+            {{ 'roles.create' | siTranslate }}
+          </button>
+        </div>
+      } @else {
+        <div class="roles-grid">
+          @for (role of p.items; track role.id; let i = $index) {
+            <article class="role-card" [attr.data-accent]="i % 3">
+              <div class="role-card__top">
+                <div class="role-card__identity">
+                  <span class="role-card__avatar" aria-hidden="true">{{ roleName(role).slice(0, 1) }}</span>
+                  <div class="role-card__titles">
+                    <h2 class="role-card__name">{{ roleName(role) }}</h2>
+                    <p class="role-card__code">{{ role.nameEn }}</p>
+                  </div>
+                </div>
+                @if (role.nameEn === 'Admin') {
+                  <span class="role-card__badge">{{ 'roles.adminBadge' | siTranslate }}</span>
+                }
+              </div>
+
+              <p class="role-card__desc">{{ roleDesc(role) }}</p>
+
+              <div class="role-card__stats">
+                <span>{{ 'roles.permCount' | siTranslate: { count: role.permissionCount } }}</span>
+                <span>{{ 'roles.userCount' | siTranslate: { count: role.userCount } }}</span>
+              </div>
+
+              <div class="role-card__actions">
+                <button type="button" class="si-btn si-btn--primary si-btn--sm" (click)="openEdit(role)">
+                  {{ 'roles.edit' | siTranslate }}
+                </button>
+                @if (canDelete(role)) {
+                  <button
+                    type="button"
+                    class="si-btn si-btn--ghost si-btn--sm role-card__delete"
+                    [disabled]="saving()"
+                    (click)="remove(role, $event)"
+                  >
+                    {{ 'roles.delete' | siTranslate }}
+                  </button>
+                }
+              </div>
+            </article>
+          }
+        </div>
+
+        <div class="pager">
+          <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!p.hasPreviousPage">
+            {{ 'common.pagerPrev' | siTranslate }}
+          </button>
+          <span class="pager__meta">{{
+            'common.pagerMeta' | siTranslate: { page: p.page, totalPages: p.totalPages, totalCount: p.totalCount }
+          }}</span>
+          <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!p.hasNextPage">
+            {{ 'common.pagerNext' | siTranslate }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+</div>
+
+@if (modalOpen()) {
+  <div class="role-modal" role="dialog" aria-modal="true" (click)="closeModal()">
+    <div class="role-modal__panel" (click)="$event.stopPropagation()">
+      <header class="role-modal__head">
+        <div>
+          <h2 class="role-modal__title">
+            {{ (modalMode() === 'create' ? 'roles.createTitle' : 'roles.editTitle') | siTranslate }}
+          </h2>
+          <p class="role-modal__hint">{{ 'roles.modalHint' | siTranslate }}</p>
+        </div>
+        <button
+          type="button"
+          class="role-modal__close"
+          (click)="closeModal()"
+          [attr.aria-label]="'common.close' | siTranslate"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </header>
+
+      @if (modalLoading()) {
+        <p class="roles-state">{{ 'common.loading' | siTranslate }}</p>
+      } @else {
+        <div class="role-modal__body">
+          <div class="roles-form">
+            <label class="si-field">
+              <span class="si-field__label">{{ 'roles.nameAr' | siTranslate }}</span>
+              <input class="si-input" [(ngModel)]="nameAr" name="nameAr" />
+            </label>
+            <label class="si-field">
+              <span class="si-field__label">{{ 'roles.nameEn' | siTranslate }}</span>
+              <input class="si-input" [(ngModel)]="nameEn" name="nameEn" [disabled]="isAdminRole" />
+            </label>
+            <label class="si-field si-field--full">
+              <span class="si-field__label">{{ 'roles.descAr' | siTranslate }}</span>
+              <input class="si-input" [(ngModel)]="descriptionAr" name="descriptionAr" />
+            </label>
+            <label class="si-field si-field--full">
+              <span class="si-field__label">{{ 'roles.descEn' | siTranslate }}</span>
+              <input class="si-input" [(ngModel)]="descriptionEn" name="descriptionEn" />
+            </label>
+          </div>
+
+          <h3 class="roles-perms__title">{{ 'roles.permissions' | siTranslate }}</h3>
+          <p class="roles-perms__hint">{{ 'roles.permissionsHint' | siTranslate }}</p>
+
+          <div class="roles-perms">
+            @for (group of permissionModules(); track group.module) {
+              <section class="perm-module">
+                <h4 class="perm-module__title">{{ moduleLabel(group.module) }}</h4>
+                <ul class="perm-module__list">
+                  @for (p of group.items; track p.id) {
+                    <li>
+                      <label class="perm-row">
+                        <input
+                          type="checkbox"
+                          [checked]="isChecked(p.id)"
+                          (change)="togglePermission(p.id)"
+                        />
+                        <span class="perm-row__body">
+                          <span class="perm-row__name">{{ permissionName(p) }}</span>
+                          <span class="perm-row__code">{{ p.code }}</span>
+                          @if (permissionDesc(p); as d) {
+                            <span class="perm-row__desc">{{ d }}</span>
+                          }
+                        </span>
+                      </label>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+          </div>
+        </div>
+
+        <footer class="role-modal__foot">
+          <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeModal()">
+            {{ 'common.cancel' | siTranslate }}
+          </button>
+          <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="save()">
+            {{ (saving() ? 'roles.saving' : 'roles.save') | siTranslate }}
+          </button>
+        </footer>
+      }
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="role-delete-title" (click)="closeDeleteConfirm()">
+    <div class="confirm-modal__panel" (click)="$event.stopPropagation()">
+      <div class="confirm-modal__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M19 6l-1 14H6L5 6" />
+          <path d="M10 11v6M14 11v6" />
+        </svg>
+      </div>
+      <h2 id="role-delete-title" class="confirm-modal__title">{{ 'roles.confirmDeleteTitle' | siTranslate }}</h2>
+      <p class="confirm-modal__question">{{ 'roles.confirmDelete' | siTranslate }}</p>
+      <div class="confirm-modal__target">
+        <span class="confirm-modal__avatar" aria-hidden="true">{{ roleName(target).slice(0, 1) }}</span>
+        <div>
+          <strong>{{ roleName(target) }}</strong>
+          <small>{{ target.nameEn }} · {{ 'roles.userCount' | siTranslate: { count: target.userCount } }}</small>
+        </div>
+      </div>
+      <p class="confirm-modal__hint">{{ 'roles.confirmDeleteHint' | siTranslate }}</p>
+      <div class="confirm-modal__actions">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeDeleteConfirm()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="confirm-modal__danger" [disabled]="saving()" (click)="confirmDelete()">
+          {{ (saving() ? 'roles.saving' : 'roles.confirmDeleteBtn') | siTranslate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,246 @@
+<div class="rep-page">
+  <header class="rep-toolbar">
+    <div>
+      <h1>{{ 'nav.reports' | siTranslate }}</h1>
+      <p>{{ 'reports.smartDesc' | siTranslate }}</p>
+    </div>
+    <div class="rep-filters">
+      <label class="rep-filter">
+        <span>{{ 'reports.from' | siTranslate }}</span>
+        <input class="si-input rep-filters__date" type="date" [(ngModel)]="fromLocal" name="fromLocal" />
+      </label>
+      <label class="rep-filter">
+        <span>{{ 'reports.to' | siTranslate }}</span>
+        <input class="si-input rep-filters__date" type="date" [(ngModel)]="toLocal" name="toLocal" />
+      </label>
+      <button type="button" class="si-btn si-btn--primary" (click)="reload()">{{ 'reports.apply' | siTranslate }}</button>
+      <button type="button" class="si-btn si-btn--ghost" [disabled]="exporting() || loading()" (click)="exportExcel()">
+        {{ (exporting() ? 'reports.exporting' : 'reports.exportExcel') | siTranslate }}
+      </button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <p class="rep-error">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="rep-state">{{ 'common.loading' | siTranslate }}</p>
+  } @else {
+    @if (adminSummary(); as a) {
+      <div class="rep-kpis">
+        <article><span>{{ 'reports.sales' | siTranslate }}</span><strong>{{ a.salesTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</strong></article>
+        <article><span>{{ 'reports.invoices' | siTranslate }}</span><strong>{{ a.invoiceCount }}</strong></article>
+        <article><span>{{ 'reports.returns' | siTranslate }}</span><strong>{{ a.returnsTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</strong></article>
+        <article><span>{{ 'reports.discounts' | siTranslate }}</span><strong>{{ a.discountTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</strong></article>
+        <article><span>{{ 'reports.stores' | siTranslate }}</span><strong>{{ a.activeStoreCount }}</strong></article>
+        <article><span>{{ 'reports.products' | siTranslate }}</span><strong>{{ a.productCount }}</strong></article>
+        <article><span>{{ 'reports.lowStock' | siTranslate }}</span><strong>{{ a.lowStockCount }}</strong></article>
+        <article><span>{{ 'reports.cashiers' | siTranslate }}</span><strong>{{ a.cashiers.length }}</strong></article>
+      </div>
+
+      <div class="rep-charts">
+        <section class="rep-chart rep-chart--wide">
+          <h2>{{ 'reports.daily' | siTranslate }}</h2>
+          @if (a.dailySales.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="line" [labels]="dayLabels(a)" [datasets]="daySales(a)" [currency]="true" [legend]="false" />
+          }
+        </section>
+        <section class="rep-chart rep-chart--wide">
+          <h2>{{ 'reports.hourly' | siTranslate }}</h2>
+          @if (a.hourlySales.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="line" [labels]="hourLabels(a)" [datasets]="hourSales(a)" [currency]="true" [legend]="false" />
+          }
+        </section>
+
+        <section class="rep-chart rep-chart--wide">
+          <h2>{{ 'reports.storesPerf' | siTranslate }}</h2>
+          @if (a.stores.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="bar" [horizontal]="true" [labels]="storeLabels(a.stores)" [datasets]="storeCompareDs(a.stores)" [currency]="true" />
+          }
+        </section>
+        <section class="rep-chart rep-chart--wide">
+          <h2>{{ 'reports.cashiersPerf' | siTranslate }}</h2>
+          @if (a.cashiers.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="bar" [horizontal]="true" [labels]="cashierLabels(a.cashiers)" [datasets]="cashierSalesDs(a.cashiers)" [currency]="true" [legend]="false" />
+          }
+        </section>
+
+        <section class="rep-chart">
+          <h2>{{ 'reports.byStore' | siTranslate }}</h2>
+          @if (a.salesByStore.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="doughnut" [labels]="labels(a.salesByStore)" [datasets]="ds('reports.chartSales', amounts(a.salesByStore))" [currency]="true" />
+          }
+        </section>
+        <section class="rep-chart">
+          <h2>{{ 'reports.byCategory' | siTranslate }}</h2>
+          @if (a.salesByCategory.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="doughnut" [labels]="labels(a.salesByCategory)" [datasets]="ds('reports.chartSales', amounts(a.salesByCategory))" [currency]="true" />
+          }
+        </section>
+        <section class="rep-chart">
+          <h2>{{ 'reports.topProducts' | siTranslate }}</h2>
+          @if (a.topProducts.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="bar" [horizontal]="true" [labels]="labels(a.topProducts)" [datasets]="ds('reports.chartSales', amounts(a.topProducts))" [currency]="true" [legend]="false" />
+          }
+        </section>
+        <section class="rep-chart">
+          <h2>{{ 'reports.payment' | siTranslate }}</h2>
+          @if (a.paymentBreakdown.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="pie" [labels]="labels(a.paymentBreakdown)" [datasets]="ds('reports.chartSales', amounts(a.paymentBreakdown))" [currency]="true" />
+          }
+        </section>
+
+        <section class="rep-chart">
+          <h2>{{ 'reports.lowList' | siTranslate }}</h2>
+          @if (inventoryLabels(a.inventoryItems).length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="bar" [horizontal]="true" [labels]="inventoryLabels(a.inventoryItems)" [datasets]="inventoryStockDs(a.inventoryItems)" [legend]="false" />
+          }
+        </section>
+        <section class="rep-chart">
+          <h2>{{ 'reports.inventoryByCat' | siTranslate }}</h2>
+          @if (a.inventoryByCategory.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="polarArea" [labels]="labels(a.inventoryByCategory)" [datasets]="ds('reports.chartStock', amounts(a.inventoryByCategory))" />
+          }
+        </section>
+        <section class="rep-chart rep-chart--wide">
+          <h2>{{ 'reports.recentOrders' | siTranslate }}</h2>
+          @if (a.recentOrders.length === 0) {
+            <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+          } @else {
+            <app-si-chart type="line" [labels]="orderLabels(a.recentOrders)" [datasets]="orderTotalsDs(a.recentOrders)" [currency]="true" [legend]="false" />
+          }
+        </section>
+      </div>
+    } @else {
+      @if (storeSummary(); as s) {
+        <div class="rep-kpis">
+          <article><span>{{ 'reports.sales' | siTranslate }}</span><strong>{{ s.salesTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</strong></article>
+          <article><span>{{ 'reports.invoices' | siTranslate }}</span><strong>{{ s.invoiceCount }}</strong></article>
+          <article><span>{{ 'reports.avgTicket' | siTranslate }}</span><strong>{{ s.averageTicket | currency: 'EGP' : 'LE' : '1.0-2' }}</strong></article>
+          <article><span>{{ 'reports.returns' | siTranslate }}</span><strong>{{ s.returnsTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</strong></article>
+          <article><span>{{ 'reports.discounts' | siTranslate }}</span><strong>{{ s.discountTotal | currency: 'EGP' : 'LE' : '1.0-2' }}</strong></article>
+          <article><span>{{ 'reports.products' | siTranslate }}</span><strong>{{ s.productCount }}</strong></article>
+          <article><span>{{ 'reports.lowStock' | siTranslate }}</span><strong>{{ s.lowStockCount }}</strong></article>
+          <article><span>{{ 'reports.cashiers' | siTranslate }}</span><strong>{{ s.cashiers.length }}</strong></article>
+        </div>
+
+        <div class="rep-charts">
+          <section class="rep-chart rep-chart--wide">
+            <h2>{{ 'reports.daily' | siTranslate }}</h2>
+            @if (s.dailySales.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="line" [labels]="dayLabels(s)" [datasets]="daySales(s)" [currency]="true" [legend]="false" />
+            }
+          </section>
+          <section class="rep-chart rep-chart--wide">
+            <h2>{{ 'reports.hourly' | siTranslate }}</h2>
+            @if (s.hourlySales.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="line" [labels]="hourLabels(s)" [datasets]="hourSales(s)" [currency]="true" [legend]="false" />
+            }
+          </section>
+
+          <section class="rep-chart rep-chart--wide">
+            <h2>{{ 'reports.cashiersPerf' | siTranslate }}</h2>
+            @if (s.cashiers.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="bar" [horizontal]="true" [labels]="cashierLabels(s.cashiers)" [datasets]="cashierSalesDs(s.cashiers)" [currency]="true" [legend]="false" />
+            }
+          </section>
+          <section class="rep-chart rep-chart--wide">
+            <h2>{{ 'reports.performance' | siTranslate }}</h2>
+            @if (s.dailySales.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="line" [labels]="dayLabels(s)" [datasets]="dayInvoices(s)" [legend]="false" />
+            }
+          </section>
+
+          <section class="rep-chart">
+            <h2>{{ 'reports.byCashier' | siTranslate }}</h2>
+            @if (s.cashiers.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="bar" [labels]="cashierLabels(s.cashiers)" [datasets]="cashierInvoicesDs(s.cashiers)" [legend]="false" />
+            }
+          </section>
+          <section class="rep-chart">
+            <h2>{{ 'reports.byCategory' | siTranslate }}</h2>
+            @if (s.salesByCategory.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="doughnut" [labels]="labels(s.salesByCategory)" [datasets]="ds('reports.chartSales', amounts(s.salesByCategory))" [currency]="true" />
+            }
+          </section>
+          <section class="rep-chart">
+            <h2>{{ 'reports.topProducts' | siTranslate }}</h2>
+            @if (s.topProducts.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="bar" [horizontal]="true" [labels]="labels(s.topProducts)" [datasets]="ds('reports.chartSales', amounts(s.topProducts))" [currency]="true" [legend]="false" />
+            }
+          </section>
+          <section class="rep-chart">
+            <h2>{{ 'reports.payment' | siTranslate }}</h2>
+            @if (s.paymentBreakdown.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="pie" [labels]="labels(s.paymentBreakdown)" [datasets]="ds('reports.chartSales', amounts(s.paymentBreakdown))" [currency]="true" />
+            }
+          </section>
+
+          <section class="rep-chart">
+            <h2>{{ 'reports.lowList' | siTranslate }}</h2>
+            @if (inventoryLabels(s.inventoryItems).length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="bar" [horizontal]="true" [labels]="inventoryLabels(s.inventoryItems)" [datasets]="inventoryStockDs(s.inventoryItems)" [legend]="false" />
+            }
+          </section>
+          <section class="rep-chart">
+            <h2>{{ 'reports.inventoryByCat' | siTranslate }}</h2>
+            @if (s.inventoryByCategory.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="polarArea" [labels]="labels(s.inventoryByCategory)" [datasets]="ds('reports.chartStock', amounts(s.inventoryByCategory))" />
+            }
+          </section>
+          <section class="rep-chart rep-chart--wide">
+            <h2>{{ 'reports.recentOrders' | siTranslate }}</h2>
+            @if (s.recentOrders.length === 0) {
+              <p class="rep-empty">{{ 'dashboard.chartEmpty' | siTranslate }}</p>
+            } @else {
+              <app-si-chart type="line" [labels]="orderLabels(s.recentOrders)" [datasets]="orderTotalsDs(s.recentOrders)" [currency]="true" [legend]="false" />
+            }
+          </section>
+        </div>
+      } @else {
+        <p class="rep-state">{{ 'dashboard.noData' | siTranslate }}</p>
+      }
+    }
+  }
+</div>

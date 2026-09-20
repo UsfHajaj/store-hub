@@ -1,0 +1,183 @@
+<div class="cat-page">
+  <header class="cat-toolbar">
+    <div>
+      <h1 class="cat-toolbar__title">{{ 'categories.heading' | siTranslate }}</h1>
+      <p class="cat-toolbar__desc">{{ 'categories.desc' | siTranslate }}</p>
+    </div>
+    @if (canManage()) {
+      <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+        {{ 'categories.create' | siTranslate }}
+      </button>
+    }
+  </header>
+
+  <section class="cat-panel">
+    <div class="cat-filters">
+      <label class="cat-filters__search">
+        <span class="cat-filters__label">{{ 'categories.search' | siTranslate }}</span>
+        <input
+          class="si-input"
+          [(ngModel)]="search"
+          name="search"
+          (keyup.enter)="apply()"
+          [placeholder]="'categories.searchPh' | siTranslate"
+        />
+      </label>
+      <button type="button" class="si-btn si-btn--ghost" (click)="apply()">
+        {{ 'common.searchBtn' | siTranslate }}
+      </button>
+    </div>
+
+    @if (loading()) {
+      <p class="cat-state">{{ 'common.loading' | siTranslate }}</p>
+    }
+
+    @if (!loading() && result(); as p) {
+      @if (p.items.length === 0) {
+        <div class="cat-empty">
+          <p>{{ 'categories.empty' | siTranslate }}</p>
+          @if (canManage()) {
+            <button type="button" class="si-btn si-btn--primary" (click)="openCreate()">
+              {{ 'categories.create' | siTranslate }}
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="cat-grid">
+          @for (c of p.items; track c.id; let i = $index) {
+            <article
+              class="cat-card"
+              [class.cat-card--sub]="!!c.parentCategoryId"
+              [attr.data-accent]="i % 3"
+            >
+              <div class="cat-card__head">
+                <span class="cat-card__avatar" aria-hidden="true">{{ categoryName(c).slice(0, 1) }}</span>
+                <div class="cat-card__main">
+                  <div class="cat-card__title-row">
+                    <h2 class="cat-card__name">{{ categoryName(c) }}</h2>
+                    <span class="cat-card__status" [class.is-off]="!c.isActive">
+                      {{ (c.isActive ? 'categories.active' : 'categories.inactive') | siTranslate }}
+                    </span>
+                  </div>
+                  <span class="cat-card__kind" [class.is-root]="!c.parentCategoryId">
+                    {{ parentBadge(c) }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="cat-card__meta">
+                <span class="cat-chip">{{ 'categories.productCount' | siTranslate: { count: c.productCount } }}</span>
+                <span class="cat-chip">{{ 'categories.childCount' | siTranslate: { count: c.childCount } }}</span>
+              </div>
+
+              @if (canManage()) {
+                <div class="cat-card__actions">
+                  <button type="button" class="si-btn si-btn--primary si-btn--sm" (click)="openEdit(c)">
+                    {{ 'categories.edit' | siTranslate }}
+                  </button>
+                  <button type="button" class="si-btn si-btn--ghost si-btn--sm cat-card__del" (click)="remove(c, $event)">
+                    {{ 'categories.delete' | siTranslate }}
+                  </button>
+                </div>
+              }
+            </article>
+          }
+        </div>
+
+        <div class="pager">
+          <button type="button" class="si-btn si-btn--ghost" (click)="prev()" [disabled]="!p.hasPreviousPage">
+            {{ 'common.pagerPrev' | siTranslate }}
+          </button>
+          <span class="pager__meta">{{
+            'common.pagerMeta' | siTranslate: { page: p.page, totalPages: p.totalPages, totalCount: p.totalCount }
+          }}</span>
+          <button type="button" class="si-btn si-btn--ghost" (click)="next()" [disabled]="!p.hasNextPage">
+            {{ 'common.pagerNext' | siTranslate }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+</div>
+
+@if (modalOpen()) {
+  <div class="cat-modal" role="dialog" aria-modal="true" (click)="closeModal()">
+    <div class="cat-modal__panel" (click)="$event.stopPropagation()">
+      <header class="cat-modal__head">
+        <h2 class="cat-modal__title">
+          {{ (modalMode() === 'create' ? 'categories.createTitle' : 'categories.editTitle') | siTranslate }}
+        </h2>
+        <button type="button" class="cat-modal__close" (click)="closeModal()" [attr.aria-label]="'common.close' | siTranslate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+      </header>
+      <div class="cat-modal__body">
+        <div class="cat-form">
+          <label class="si-field">
+            <span class="si-field__label">{{ 'categories.nameAr' | siTranslate }}</span>
+            <input class="si-input" [(ngModel)]="nameAr" name="nameAr" />
+          </label>
+          <label class="si-field">
+            <span class="si-field__label">{{ 'categories.nameEn' | siTranslate }}</span>
+            <input class="si-input" [(ngModel)]="nameEn" name="nameEn" />
+          </label>
+          <div class="si-field cat-form__parent">
+            <span class="si-field__label">{{ 'categories.parent' | siTranslate }}</span>
+            <select class="si-input" [(ngModel)]="parentCategoryId" name="parentCategoryId">
+              <option [ngValue]="null">{{ 'categories.noParent' | siTranslate }}</option>
+              @for (c of parentOptions(); track c.id) {
+                <option [ngValue]="c.id">{{ categoryName(c) }}</option>
+              }
+            </select>
+            <p class="cat-form__hint">{{ 'categories.parentHint' | siTranslate }}</p>
+          </div>
+          <label class="si-field si-field--check">
+            <input type="checkbox" [(ngModel)]="isActive" name="isActive" />
+            <span>{{ 'categories.active' | siTranslate }}</span>
+          </label>
+        </div>
+      </div>
+      <footer class="cat-modal__foot">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeModal()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="si-btn si-btn--primary" [disabled]="saving()" (click)="save()">
+          {{ (saving() ? 'categories.saving' : 'categories.save') | siTranslate }}
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (deleteTarget(); as target) {
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cat-delete-title" (click)="closeDeleteConfirm()">
+    <div class="confirm-modal__panel" (click)="$event.stopPropagation()">
+      <div class="confirm-modal__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M19 6l-1 14H6L5 6" />
+          <path d="M10 11v6M14 11v6" />
+        </svg>
+      </div>
+      <h2 id="cat-delete-title" class="confirm-modal__title">{{ 'categories.confirmDeleteTitle' | siTranslate }}</h2>
+      <p class="confirm-modal__question">{{ 'categories.confirmDelete' | siTranslate }}</p>
+      <div class="confirm-modal__target">
+        <span class="confirm-modal__avatar" aria-hidden="true">{{ categoryName(target).slice(0, 1) }}</span>
+        <div>
+          <strong>{{ categoryName(target) }}</strong>
+          <small>{{ parentBadge(target) }}</small>
+        </div>
+      </div>
+      <p class="confirm-modal__hint">{{ 'categories.confirmDeleteHint' | siTranslate }}</p>
+      <div class="confirm-modal__actions">
+        <button type="button" class="si-btn si-btn--ghost" [disabled]="saving()" (click)="closeDeleteConfirm()">
+          {{ 'common.cancel' | siTranslate }}
+        </button>
+        <button type="button" class="confirm-modal__danger" [disabled]="saving()" (click)="confirmDelete()">
+          {{ (saving() ? 'categories.saving' : 'categories.confirmDeleteBtn') | siTranslate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

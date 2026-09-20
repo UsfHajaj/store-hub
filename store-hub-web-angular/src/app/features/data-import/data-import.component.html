@@ -1,0 +1,119 @@
+<div class="di">
+  <header class="di__hero">
+    <div class="di__hero-copy">
+      <p class="di__eyebrow">{{ 'dataImport.eyebrow' | siTranslate }}</p>
+      <h1>{{ 'nav.dataImport' | siTranslate }}</h1>
+      <p class="di__lead">{{ 'dataImport.desc' | siTranslate }}</p>
+    </div>
+    @if (storeLabel()) {
+      <div class="di__store">
+        <span>{{ 'dataImport.activeStore' | siTranslate }}</span>
+        <strong>{{ storeLabel() }}</strong>
+      </div>
+    }
+  </header>
+
+  @if (error()) {
+    <p class="di__banner di__banner--err">{{ error() }}</p>
+  }
+  @if (message()) {
+    <p class="di__banner di__banner--ok">{{ message() }}</p>
+  }
+  @if (result(); as r) {
+    @if (r.errors.length) {
+      <ul class="di__errlist">
+        @for (e of r.errors; track e) {
+          <li>{{ e }}</li>
+        }
+      </ul>
+    }
+  }
+
+  @if (canUseAll()) {
+    <section class="di__bundle">
+      <div class="di__bundle-text">
+        <span class="di__badge">{{ 'dataImport.recommended' | siTranslate }}</span>
+        <h2>{{ 'dataImport.all' | siTranslate }}</h2>
+        <p>{{ 'dataImport.allDesc' | siTranslate }}</p>
+        <ul class="di__chips">
+          <li>{{ 'dataImport.stores' | siTranslate }}</li>
+          <li>{{ 'dataImport.categories' | siTranslate }}</li>
+          <li>{{ 'dataImport.products' | siTranslate }}</li>
+          <li>{{ 'dataImport.users' | siTranslate }}</li>
+        </ul>
+      </div>
+      <div class="di__bundle-actions">
+        <button
+          type="button"
+          class="si-btn si-btn--ghost"
+          [disabled]="busyKind() === 'All'"
+          (click)="download('All', false)"
+        >
+          {{ 'dataImport.emptyTemplate' | siTranslate }}
+        </button>
+        <button
+          type="button"
+          class="si-btn si-btn--ghost"
+          [disabled]="busyKind() === 'All'"
+          (click)="download('All', true)"
+        >
+          {{ 'dataImport.sampleTemplate' | siTranslate }}
+        </button>
+        <label class="si-btn si-btn--primary di__upload">
+          <input
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            hidden
+            [disabled]="busyKind() === 'All'"
+            (change)="onFile('All', false, $event)"
+          />
+          {{ (busyKind() === 'All' ? 'dataImport.uploading' : 'dataImport.uploadOnce') | siTranslate }}
+        </label>
+      </div>
+    </section>
+  }
+
+  <div class="di__section-head">
+    <h2>{{ 'dataImport.separate' | siTranslate }}</h2>
+    <p>{{ 'dataImport.separateDesc' | siTranslate }}</p>
+  </div>
+
+  <div class="di__grid">
+    @for (card of visibleCards(); track card.kind) {
+      <article class="di__card">
+        <header>
+          <h3>{{ card.titleKey | siTranslate }}</h3>
+          <p>{{ card.descKey | siTranslate }}</p>
+        </header>
+        <div class="di__card-actions">
+          <button
+            type="button"
+            class="si-btn si-btn--ghost si-btn--sm"
+            [disabled]="busyKind() === card.kind"
+            (click)="download(card.kind, false)"
+          >
+            {{ 'dataImport.emptyTemplate' | siTranslate }}
+          </button>
+          <button
+            type="button"
+            class="si-btn si-btn--ghost si-btn--sm"
+            [disabled]="busyKind() === card.kind"
+            (click)="download(card.kind, true)"
+          >
+            {{ 'dataImport.sampleTemplate' | siTranslate }}
+          </button>
+          <label class="si-btn si-btn--primary si-btn--sm di__upload">
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              hidden
+              [disabled]="busyKind() === card.kind"
+              (change)="onFile(card.kind, card.needsStore, $event)"
+            />
+            {{ (busyKind() === card.kind ? 'dataImport.uploading' : 'dataImport.upload') | siTranslate }}
+          </label>
+        </div>
+      </article>
+    }
+  </div>
+</div>
